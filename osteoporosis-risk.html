@@ -22,6 +22,19 @@
   .eligible-no{color:var(--bad);font-weight:700;}
   .src-note{font-size:11px;color:var(--sub);border-top:1px dashed var(--line);margin-top:10px;padding-top:8px;line-height:1.7;}
   .ext-link{font-size:12px;}
+  .nutr-block{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
+  .nutr-tile{flex:1;min-width:140px;background:var(--accent-light);border-radius:12px;padding:12px 14px;}
+  .nutr-num{font-size:22px;font-weight:800;color:var(--accent);}
+  .nutr-unit{font-size:12px;color:var(--sub);font-weight:600;}
+  .nutr-desc{font-size:11.5px;color:var(--sub);margin-top:4px;line-height:1.6;}
+  .food-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+  .food-table th{background:var(--accent-light);color:var(--accent);font-weight:700;padding:5px 8px;text-align:left;}
+  .food-table td{padding:5px 8px;border-bottom:1px dashed var(--line);}
+  .frax-hint{background:#f5f5f7;border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;line-height:1.8;color:var(--ink);}
+  .frax-thresh-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;}
+  .frax-thresh{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:11.5px;}
+  .frax-thresh b{display:block;font-size:13px;color:var(--accent);}
+  .frax-thresh .sub{font-size:10.5px;}
 </style>
 </head>
 <body><div class="wrap">
@@ -57,18 +70,33 @@
 </div>
 
 <div class="card">
-  <div class="section-title">③ 骨密度（DXA）與 FRAX 結果</div>
-  <div class="item-sub">取多部位（腰椎/髖骨/前臂）最低 T 值輸入；FRAX 請於上方連結計算後，將「亞洲－台灣」結果回填於下方。</div>
+  <div class="section-title">③ 鈣質與維生素 D 攝取建議（依個人資料自動產生）</div>
+  <div id="caVitDOut" class="item-sub">請先填寫基本資料</div>
+</div>
+
+<div class="card">
+  <div class="section-title">④ 骨密度（DXA）與 FRAX 結果</div>
+  <div class="item-sub">取多部位（腰椎/髖骨/前臂）最低 T 值輸入；FRAX 請至官方網站計算後，將「亞洲－台灣」結果回填於下方。</div>
   <div class="grid2">
     <div class="field-row"><label>最低 T 值（T-score，無資料留白）</label><input type="number" step="0.1" id="i_tscore" placeholder="例：-2.6"></div>
     <div class="field-row"><label>骨小樑指數 TBS（選填）</label><input type="number" step="0.01" id="i_tbs" placeholder="例：1.15"></div>
-    <div class="field-row"><label>FRAX 10年主要骨折風險（%）</label><input type="number" step="0.1" id="i_fraxmof" placeholder="例：12.5"></div>
-    <div class="field-row"><label>FRAX 10年髖骨骨折風險（%）</label><input type="number" step="0.1" id="i_fraxhip" placeholder="例：3.2"></div>
+    <div class="field-row">
+      <label>FRAX 10年主要骨折風險（%）</label>
+      <input type="number" step="0.1" id="i_fraxmof" placeholder="例：12.5">
+    </div>
+    <div class="field-row">
+      <label>FRAX 10年髖骨骨折風險（%）</label>
+      <input type="number" step="0.1" id="i_fraxhip" placeholder="例：3.2">
+    </div>
+  </div>
+  <div class="frax-hint" id="fraxHint" style="display:none;"></div>
+  <div style="margin-top:10px;">
+    <a class="choice-btn ext-link" href="https://www.fraxplus.org/zh-Hant/calculation-tool/" target="_blank">前往 FRAXplus 計算（選「亞洲－台灣」）↗</a>
   </div>
 </div>
 
 <div class="card">
-  <div class="section-title">④ 脆弱性骨折病史（Fragility Fracture）</div>
+  <div class="section-title">⑤ 脆弱性骨折病史（Fragility Fracture）</div>
   <div class="grid2">
     <div class="field-row"><label>脊椎骨折次數</label><input type="number" min="0" id="i_fx_spine" value="0"></div>
     <div class="field-row"><label>髖部骨折次數</label><input type="number" min="0" id="i_fx_hip" value="0"></div>
@@ -82,7 +110,7 @@
 </div>
 
 <div class="card">
-  <div class="section-title">⑤ 風險因子與續發性病因</div>
+  <div class="section-title">⑥ 風險因子與續發性病因</div>
   <div class="chk-item"><input type="checkbox" id="i_fallrisk"><label for="i_fallrisk">跌倒風險高或有傷害性跌倒病史</label></div>
   <div class="chk-item"><input type="checkbox" id="i_parenthip"><label for="i_parenthip">父母髖部骨折史</label></div>
   <div class="chk-item"><input type="checkbox" id="i_smoke"><label for="i_smoke">目前抽菸</label></div>
@@ -102,7 +130,7 @@
 </div>
 
 <div class="card">
-  <div class="section-title">⑥ DXA 適應症與健保給付對照</div>
+  <div class="section-title">⑦ DXA 適應症與健保給付對照</div>
   <div id="dxaList"></div>
 </div>
 
@@ -179,6 +207,82 @@ function updateBMI(){
   } else out.textContent = '';
 }
 ['i_weight','i_height'].forEach(id=>document.getElementById(id).addEventListener('input', ()=>{ updateBMI(); updateOSTA(); }));
+['i_sex','i_age','i_meno'].forEach(id=>document.getElementById(id).addEventListener('change', ()=>{ updateCaVitD(); updateFraxHint(); }));
+document.getElementById('i_age').addEventListener('input', ()=>{ updateCaVitD(); updateFraxHint(); });
+
+function updateCaVitD(){
+  const sex = v('i_sex'), age = num('i_age'), meno = v('i_meno');
+  const out = document.getElementById('caVitDOut');
+  if(age === null){ out.innerHTML = '請先填寫基本資料'; return; }
+
+  // Calcium target per Taiwan 2025 guideline & DRI
+  let ca = 1000, caNote = '';
+  if(sex === 'F' && meno === 'post'){ ca = 1200; caNote = '停經後女性建議提高攝取量'; }
+  else if(age >= 65){ caNote = '長者建議優先由飲食攝取，補充劑補足不足部分'; }
+
+  // Vitamin D target
+  let vitD = 800, vitDNote = '一般成人建議量';
+  if(age >= 65){ vitD = 1000; vitDNote = '65歲以上長者建議提高劑量以降低跌倒及骨折風險'; }
+
+  out.innerHTML = `
+    <div class="nutr-block">
+      <div class="nutr-tile">
+        <div class="nutr-num">${ca} <span class="nutr-unit">mg／天</span></div>
+        <div style="font-weight:700;font-size:12.5px;margin-top:2px;">鈣質建議攝取量</div>
+        <div class="nutr-desc">${caNote || '成人建議量'}<br>上限：2500 mg／天（含食物＋補充劑）</div>
+      </div>
+      <div class="nutr-tile">
+        <div class="nutr-num">${vitD} <span class="nutr-unit">IU／天</span></div>
+        <div style="font-weight:700;font-size:12.5px;margin-top:2px;">維生素 D 建議攝取量</div>
+        <div class="nutr-desc">${vitDNote}<br>目標血清 25(OH)D ≥ 30 ng/mL；上限 4000 IU／天</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <div class="section-title" style="font-size:12.5px;margin-bottom:6px;">常見食物含量參考</div>
+      <table class="food-table">
+        <thead><tr><th>食物</th><th>份量</th><th>鈣質</th><th>維生素 D</th></tr></thead>
+        <tbody>
+          <tr><td>低脂牛奶</td><td>240 ml（1杯）</td><td>約 300 mg</td><td>約 100 IU（強化品）</td></tr>
+          <tr><td>優格</td><td>100 g</td><td>約 130 mg</td><td>微量</td></tr>
+          <tr><td>板豆腐（石膏製）</td><td>100 g</td><td>約 150 mg</td><td>微量</td></tr>
+          <tr><td>黑芝麻</td><td>10 g（1湯匙）</td><td>約 120 mg</td><td>—</td></tr>
+          <tr><td>小魚乾</td><td>10 g</td><td>約 220 mg</td><td>—</td></tr>
+          <tr><td>深綠蔬菜（莧菜、芥藍）</td><td>100 g（煮熟）</td><td>約 200–300 mg</td><td>—</td></tr>
+          <tr><td>鮭魚</td><td>100 g</td><td>約 15 mg</td><td>約 600–800 IU</td></tr>
+          <tr><td>鮪魚（罐頭）</td><td>85 g</td><td>—</td><td>約 150 IU</td></tr>
+          <tr><td>蛋黃</td><td>1 顆</td><td>約 25 mg</td><td>約 40 IU</td></tr>
+          <tr><td>日曬香菇</td><td>50 g（乾重 8 g）</td><td>微量</td><td>約 200–400 IU</td></tr>
+        </tbody>
+      </table>
+      <div class="item-sub" style="margin-top:6px;">☀️ 日曬建議：手臂及臉部暴露於陽光下 10–15 分鐘／天（視季節與膚色調整），有助皮膚合成維生素 D。腎功能不全者應使用活性維生素 D，請遵醫囑。</div>
+    </div>`;
+}
+
+function updateFraxHint(){
+  const sex = v('i_sex');
+  const hint = document.getElementById('fraxHint');
+  if(!sex){ hint.style.display='none'; return; }
+  const isFemale = sex === 'F';
+  const mof_ce   = isFemale ? 15.0 : 12.5;
+  const mof_real = isFemale ? 10.0 : 9.5;
+  const hip_ce   = isFemale ? 7.0  : 6.0;
+  const hip_real = isFemale ? 4.0  : 3.0;
+  hint.style.display = 'block';
+  hint.innerHTML = `<b style="font-size:12.5px;font-weight:700;">台灣 FRAX 介入門檻參考（${isFemale?'女性':'男性'}）</b>
+    <div class="frax-thresh-row">
+      <div class="frax-thresh"><b>主要骨折（MOF）</b>
+        <span class="sub">成本效益門檻：>${mof_ce}%</span><br>
+        <span class="sub">實際風險門檻：>${mof_real}%</span><br>
+        <span class="sub">極高風險：≥30%</span>
+      </div>
+      <div class="frax-thresh"><b>髖骨骨折（Hip）</b>
+        <span class="sub">成本效益門檻：>${hip_ce}%</span><br>
+        <span class="sub">實際風險門檻：>${hip_real}%</span><br>
+        <span class="sub">極高風險：≥4.5%</span>
+      </div>
+    </div>
+    <div style="margin-top:6px;color:var(--sub);font-size:11px;">FRAX® 演算法為 Sheffield 大學專有模型，台灣版係數未公開，請至官方 FRAXplus 網站選「亞洲－台灣」計算後回填上方欄位。</div>`;
+}
 
 function updateOSTA(){
   const sex = v('i_sex'), age = num('i_age'), w = num('i_weight');
@@ -198,6 +302,7 @@ function updateOSTA(){
   }
 }
 ['i_sex','i_age','i_meno'].forEach(id=>document.getElementById(id).addEventListener('input', updateOSTA));
+['i_fraxmof','i_fraxhip'].forEach(id=>document.getElementById(id).addEventListener('input', updateFraxHint));
 document.getElementById('i_sex').addEventListener('change', ()=>{
   document.getElementById('menoRow').style.display = v('i_sex')==='F' ? 'block':'none';
 });
@@ -374,6 +479,8 @@ function summaryText(){
   const lines = [`骨質疏鬆症風險分層與藥物決策摘要 - ${new Date().toLocaleString('zh-TW')}`];
   lines.push(`性別：${v('i_sex')==='F'?'女':'男'}　年齡：${v('i_age')||'-'}　體重：${v('i_weight')||'-'}kg　身高：${v('i_height')||'-'}cm`);
   lines.push(`最低T值：${v('i_tscore')||'-'}　FRAX主要骨折：${v('i_fraxmof')||'-'}%　FRAX髖骨骨折：${v('i_fraxhip')||'-'}%`);
+  const caRec = (() => { const sex=v('i_sex'),age=num('i_age'),meno=v('i_meno'); if(!age) return null; return {ca:(sex==='F'&&meno==='post')?1200:1000, vitD:age>=65?1000:800}; })();
+  if(caRec) lines.push(`鈣質建議：${caRec.ca} mg／天　維生素D建議：${caRec.vitD} IU／天（目標血清25(OH)D ≥30 ng/mL）`);
   lines.push(`脆弱性骨折：脊椎${v('i_fx_spine')||0}／髖${v('i_fx_hip')||0}／橈骨${v('i_fx_radius')||0}／肱骨${v('i_fx_humerus')||0}`);
   lines.push('');
   lines.push(`風險分層：${lastResult.tierResult.tier}`);
@@ -408,6 +515,8 @@ document.getElementById('clearBtn').addEventListener('click', ()=>{
 
 updateBMI();
 updateOSTA();
+updateCaVitD();
+updateFraxHint();
 rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
 </script>
 </body></html>
