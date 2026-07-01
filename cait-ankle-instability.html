@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAIT 踝關節不穩篩檢 | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css">
+<style>.opt-btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 12px;font-size:12px;cursor:pointer;margin:3px 4px 3px 0;}
+.opt-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.q-card{padding-bottom:14px;margin-bottom:14px;border-bottom:1px dashed var(--line);}
+.q-card:last-child{border-bottom:none;}</style>
+</head>
+<body><div class="wrap">
+<a class="back" href="index.html">← 回工具箱首頁</a>
+<h1>🦶 CAIT 踝關節不穩評估</h1>
+<div class="sub">Cumberland Ankle Instability Tool（改編簡化中文版）· 9 題 · 點選作答後自動計算總分</div>
+<div class="disclaimer">⚠️ 本工具為依 CAIT 概念改編之簡化中文版，非官方驗證翻譯量表，僅供臨床快速篩檢參考。研究等級或正式診斷請使用已驗證之官方中文翻譯版本。</div>
+
+<div class="card">
+  <div class="section-title">評估側</div>
+  <div class="badge-row" id="sideToggle">
+    <button class="choice-btn active" data-side="R">右側 R</button>
+    <button class="choice-btn" data-side="L">左側 L</button>
+  </div>
+</div>
+
+<div class="card" id="qList"></div>
+
+<div class="card">
+  <div class="result-box" id="resultBox">請完成下方題目</div>
+</div>
+
+<div class="card">
+  <div class="section-title">📝 備註</div>
+  <textarea id="notes" placeholder="扭傷次數、症狀描述..."></textarea>
+</div>
+
+<div class="toolbar">
+  <button class="action btn-primary" id="saveBtn">儲存結果</button>
+  <button class="action btn-ghost" id="exportBtn">複製文字摘要到病歷</button>
+</div>
+<div class="saved-note" id="savedNote"></div>
+<div class="card" style="display:none;" id="historyCard">
+  <div class="section-title">🕓 歷史紀錄</div>
+  <div id="historyList"></div>
+</div>
+<footer>僅供醫療教育用途 · 資料不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script src="common.js"></script>
+<script>
+const STORE_KEY = "cait_score_v2";
+// 9題，選項從「從不」(分數最高=最穩定) 到「總是」(分數最低=最不穩定)
+const QUESTIONS = [
+  {q:"我的腳踝感覺不穩定", opts:["從不","運動時偶爾","運動時經常","日常活動偶爾","日常活動經常","總是"]},
+  {q:"我的腳踝感覺好像快要扭到（giving way）", opts:["從不","運動時偶爾","運動時經常","日常活動偶爾","日常活動經常","總是"]},
+  {q:"走在不平的地面上時，我的腳踝感覺不穩定", opts:["從不","有時","經常","總是"]},
+  {q:"跑步在不平地面時，我的腳踝感覺不穩定", opts:["從不","有時","經常","總是"]},
+  {q:"快速改變方向（cutting）時，我的腳踝感覺不穩定", opts:["從不","有時","經常","總是"]},
+  {q:"下樓梯時，我的腳踝感覺不穩定", opts:["從不","有時","經常","總是"]},
+  {q:"單腳站立時，我的腳踝感覺不穩定", opts:["從不","有時","經常","總是"]},
+  {q:"側向跳躍著地後，我的腳踝感覺不穩定", opts:["從不","有時","總是"]},
+  {q:"從一般高度跳下著地時，我的腳踝感覺不穩定", opts:["從不","有時","經常","總是"]},
+];
+let currentSide = 'R';
+let answers = {R:{}, L:{}};
+
+function buildQuestions(){
+  const c = document.getElementById('qList');
+  c.innerHTML = QUESTIONS.map((q,i)=>`
+    <div class="q-card">
+      <div class="item-name">${i+1}. ${q.q}</div>
+      <div style="margin-top:8px;" data-qi="${i}">
+        ${q.opts.map((o,oi)=>{
+          const score = (q.opts.length - 1 - oi); // 從不=最高分, 總是=0
+          return `<button class="opt-btn" data-score="${score}">${o}</button>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+  c.querySelectorAll('[data-qi]').forEach(group=>{
+    const qi = group.getAttribute('data-qi');
+    group.querySelectorAll('.opt-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        answers[currentSide][qi] = parseInt(btn.getAttribute('data-score'));
+        refreshActive();
+        compute();
+      });
+    });
+  });
+}
+function refreshActive(){
+  document.querySelectorAll('[data-qi]').forEach(group=>{
+    const qi = group.getAttribute('data-qi');
+    const val = answers[currentSide][qi];
+    group.querySelectorAll('.opt-btn').forEach(btn=>{
+      btn.classList.toggle('active', val !== undefined && parseInt(btn.getAttribute('data-score'))===val);
+    });
+  });
+}
+document.getElementById('sideToggle').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-side]');
+  if(!btn) return;
+  currentSide = btn.getAttribute('data-side');
+  document.querySelectorAll('#sideToggle button').forEach(b=>b.classList.toggle('active', b===btn));
+  refreshActive();
+  compute();
+});
+function compute(){
+  const ans = answers[currentSide];
+  const answeredCount = Object.keys(ans).length;
+  const box = document.getElementById('resultBox');
+  if(answeredCount === 0){ box.innerHTML = '請完成下方題目'; return; }
+  let rawSum = 0, rawMax = 0;
+  QUESTIONS.forEach((q,i)=>{
+    const maxScore = q.opts.length - 1;
+    rawMax += maxScore;
+    if(ans[i] !== undefined) rawSum += ans[i];
+  });
+  const scaled = (rawSum / rawMax) * 30; // 換算到 0-30 分尺度
+  const unstable = scaled <= 27;
+  box.innerHTML = `<div class="result-num">${scaled.toFixed(1)} / 30</div>
+    <div>已作答 ${answeredCount}/9 題（換算分數）</div>
+    <div style="margin-top:6px;">${unstable ? '<span class="tag red">提示功能性踝關節不穩（≤27分）</span>' : '<span class="tag green">分數正常範圍（>27分）</span>'}</div>`;
+}
+function summaryText(){
+  const ans = answers[currentSide];
+  const lines = [`CAIT 踝關節不穩評估摘要 - ${new Date().toLocaleString('zh-TW')}`, `評估側：${currentSide==='R'?'右側':'左側'}`];
+  QUESTIONS.forEach((q,i)=>{
+    if(ans[i] !== undefined){
+      const maxScore = q.opts.length - 1;
+      const optIndex = maxScore - ans[i];
+      lines.push(`${i+1}. ${q.q}：${q.opts[optIndex]}`);
+    }
+  });
+  lines.push('');
+  lines.push(document.getElementById('resultBox').innerText.replace(/\n+/g,' / '));
+  const notes = document.getElementById('notes').value.trim();
+  if(notes) lines.push(`\n備註：${notes}`);
+  return lines.join('\n');
+}
+buildQuestions();
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  rtSave(STORE_KEY, summaryText());
+  rtFlash(document.getElementById('savedNote'), '已儲存到本機 ✓');
+  rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  rtCopy(summaryText(), document.getElementById('savedNote'));
+});
+rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+</script>
+</body></html>

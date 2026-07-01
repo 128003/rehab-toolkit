@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>兒童發展評估 | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .maintab{border:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;}
+  .maintab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;}
+  .field-row{margin-bottom:10px;}
+  .field-row label{font-size:12.5px;color:var(--sub);font-weight:600;display:block;margin-bottom:4px;}
+  .ladder-item{background:var(--accent-light);border-radius:12px;padding:16px;text-align:center;}
+  .ladder-item .age{font-size:12px;color:var(--accent2);font-weight:700;}
+  .ladder-item .label{font-size:15px;font-weight:700;margin:6px 0;}
+  .ladder-actions{display:flex;gap:10px;justify-content:center;margin-top:10px;}
+  .pass-btn{background:var(--good);color:#fff;border:none;border-radius:10px;padding:9px 22px;font-weight:700;cursor:pointer;}
+  .fail-btn{background:var(--bad);color:#fff;border:none;border-radius:10px;padding:9px 22px;font-weight:700;cursor:pointer;}
+  .ladder-history{font-size:12px;color:var(--sub);margin-top:10px;}
+  .ladder-history .hrow{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line);}
+  .domain-pill{border:1px solid var(--line);background:#fff;border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;}
+  .domain-pill.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .domain-pill.done{border-color:var(--good);color:var(--good);}
+  .dx-item{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;}
+  .dx-item.selected{border-color:var(--accent);background:var(--accent-light);}
+  .dx-code{font-size:11px;color:var(--accent2);font-weight:800;}
+  .dx-detail{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.7;display:none;}
+  .dx-item.expanded .dx-detail{display:block;}
+  .checklist-cat{font-weight:800;font-size:12.5px;color:var(--accent2);margin:12px 0 6px;}
+  .checklist-cat .count{font-weight:600;color:var(--sub);font-size:11.5px;}
+  .crit-item{display:flex;align-items:flex-start;gap:8px;padding:5px 0;font-size:12.5px;}
+  .crit-item input{width:16px;height:16px;margin-top:2px;accent-color:var(--accent);flex-shrink:0;}
+  .ms-grid{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);}
+  .ms-grid label{flex:1;font-size:12.5px;}
+  .ms-grid input{width:70px;}
+  .check-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:18px;padding:6px 12px;font-size:12px;cursor:pointer;margin:3px 4px 3px 0;}
+  .check-chip input{accent-color:var(--accent);}
+</style>
+</head>
+<body><div class="wrap">
+<a class="back" href="index.html">← 回工具箱首頁</a>
+<h1>👶 兒童發展評估</h1>
+<div class="sub">Subjective 病史 · Objective 年齡階梯式評估 · Assessment 常見診斷選單 — 可分段複製到病歷</div>
+<div class="disclaimer">⚠️ 僅供臨床教育輔助參考，診斷準則為依使用者提供之整理筆記改編之精簡版，正式診斷請依 DSM-5 / ICD-10 原文準則並轉介完整評估。</div>
+
+<div class="card">
+  <div class="badge-row" id="mainTabs"></div>
+</div>
+
+<div id="subjectivePane"></div>
+<div id="objectivePane" style="display:none;"></div>
+<div id="assessmentPane" style="display:none;"></div>
+
+<div class="card">
+  <div class="section-title">📋 最終輸出</div>
+  <div class="toolbar" style="margin:0;">
+    <button class="action btn-primary" id="copyS">複製 Subjective</button>
+    <button class="action btn-primary" id="copyO">複製 Objective</button>
+    <button class="action btn-primary" id="copyA">複製 Assessment</button>
+    <button class="action btn-ghost" id="copyAll">複製全部</button>
+  </div>
+  <div class="saved-note" id="savedNote"></div>
+</div>
+<footer>僅供醫療教育用途 · 資料不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script src="common.js"></script>
+<script>
+/* ================= MAIN TABS ================= */
+const MAIN_TABS = [{k:"s",label:"Subjective"},{k:"o",label:"Objective"},{k:"a",label:"Assessment"}];
+let mainTab = 's';
+function renderMainTabs(){
+  document.getElementById('mainTabs').innerHTML = MAIN_TABS.map(t=>`<button class="maintab ${t.k===mainTab?'active':''}" data-k="${t.k}">${t.label}</button>`).join('');
+  document.querySelectorAll('.maintab').forEach(b=>b.addEventListener('click', ()=>{
+    mainTab = b.getAttribute('data-k'); renderMainTabs();
+    document.getElementById('subjectivePane').style.display = mainTab==='s'?'block':'none';
+    document.getElementById('objectivePane').style.display = mainTab==='o'?'block':'none';
+    document.getElementById('assessmentPane').style.display = mainTab==='a'?'block':'none';
+    if(mainTab==='o') initObjectiveAge();
+  }));
+}
+
+/* ================= SUBJECTIVE ================= */
+const sBox = document.getElementById('subjectivePane');
+sBox.innerHTML = `
+<div class="card">
+  <div class="section-title">基本資料</div>
+  <div class="grid2">
+    <div class="field-row"><label>年齡</label>
+      <div style="display:flex;gap:8px;">
+        <input type="number" id="s_age_y" min="0" placeholder="年" style="width:90px;">
+        <input type="number" id="s_age_m" min="0" max="11" placeholder="月" style="width:90px;">
+      </div>
+    </div>
+    <div class="field-row"><label>主訴 C.C.</label>
+      <select id="s_cc"><option>構音不清 inaccurate articulation</option><option>語言發展遲緩 Speech delay</option><option>動作發展遲緩</option><option>整體發展遲緩</option><option>其他</option></select>
+    </div>
+  </div>
+  <div class="field-row"><label>主訴補充（underlying / 其他描述）</label><textarea id="s_cc_note" placeholder="疾病背景、家長主訴細節..."></textarea></div>
+</div>
+<div class="card">
+  <div class="section-title">出生史 Birth History</div>
+  <div class="grid2">
+    <div class="field-row"><label>G / P</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span>G</span><input type="number" id="s_g" min="0" style="width:60px;">
+        <span>P</span><input type="number" id="s_p" min="0" style="width:60px;">
+      </div>
+    </div>
+    <div class="field-row"><label>週數</label>
+      <select id="s_ga_type"><option value="full">Full term</option><option value="preterm">Preterm（填週數）</option></select>
+      <input type="number" id="s_ga_week" placeholder="週數" style="margin-top:6px;display:none;">
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="field-row"><label>生產方式</label>
+      <select id="s_delivery_type"><option value="NSD">NSD</option><option value="CS">C/S</option></select>
+      <input type="text" id="s_cs_reason" placeholder="C/S 原因" style="margin-top:6px;display:none;">
+    </div>
+    <div class="field-row"><label>出生體重 BBW (g)</label><input type="text" id="s_bbw" placeholder="例：3200（LBW<2500, VLBW<1500, ELBW<1000）"></div>
+  </div>
+  <div class="grid2">
+    <div class="field-row"><label>週產期狀況</label><input type="text" id="s_perinatal" value="uneventful"></div>
+    <div class="field-row"><label>住院史</label><input type="text" id="s_hosp" placeholder="無 / 描述"></div>
+  </div>
+  <div class="grid2">
+    <div class="field-row"><label>門診追蹤</label><input type="text" id="s_opd" placeholder=""></div>
+    <div class="field-row"><label>視力/聽力</label><input type="text" id="s_vh" value="normal/normal"></div>
+  </div>
+</div>
+<div class="card">
+  <div class="section-title">家庭 Family</div>
+  <div class="grid2">
+    <div class="field-row"><label>父親年齡/學歷/工作</label><input type="text" id="s_father" placeholder="35y / 大學 / 工程師"></div>
+    <div class="field-row"><label>母親年齡/學歷/工作</label><input type="text" id="s_mother" placeholder="33y / 大學 / 家管"></div>
+  </div>
+  <div class="grid2">
+    <div class="field-row"><label>兄弟姐妹</label><input type="text" id="s_sibling" placeholder=""></div>
+    <div class="field-row"><label>主要照顧者</label>
+      <select id="s_caregiver"><option>父母</option><option>保母（日間）</option><option>保母（夜間）</option><option>保母（24hr）</option><option>保母（上班日）</option><option>祖父母</option></select>
+    </div>
+  </div>
+  <div class="field-row"><label>互動方式（可複選）</label>
+    <div id="s_interaction_chips">
+      ${["basic care","陪玩看書","regularly","親子館","公園"].map(o=>`<label class="check-chip"><input type="checkbox" value="${o}">${o}</label>`).join('')}
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="section-title">發展里程碑 Developmental Milestones</div>
+  <div class="item-sub" style="margin-bottom:8px;">請直接填入年齡（單位：年，可小數，例：1.5）</div>
+  <div class="ms-grid"><label>GM - sit without support at</label><input type="number" step="0.1" id="ms_sit"><span class="item-sub">y</span></div>
+  <div class="ms-grid"><label>GM - stand at</label><input type="number" step="0.1" id="ms_stand"><span class="item-sub">y</span></div>
+  <div class="ms-grid"><label>GM - walk at</label><input type="number" step="0.1" id="ms_walk"><span class="item-sub">y</span></div>
+  <div class="ms-grid"><label>GM - jump at</label><input type="number" step="0.1" id="ms_jump"><span class="item-sub">y</span></div>
+  <div class="ms-grid"><label>GM - stair at</label><input type="number" step="0.1" id="ms_stair"><span class="item-sub">y</span></div>
+  <div class="ms-grid"><label>FM - grasp at</label><input type="number" step="0.1" id="ms_grasp"><span class="item-sub">y</span></div>
+  <div class="ms-grid"><label>FM - pincer grasp at</label><input type="number" step="0.1" id="ms_pincer"><span class="item-sub">y</span></div>
+  <div class="ms-grid"><label>FM - throw ball / piling up at</label><input type="number" step="0.1" id="ms_throw"><span class="item-sub">y</span></div>
+  <div class="ms-grid"><label>FM - door knob / turn book page at</label><input type="number" step="0.1" id="ms_doorknob"><span class="item-sub">y</span></div>
+  <div class="ms-grid"><label>Speech - first word at</label><input type="number" step="0.1" id="ms_firstword"><span class="item-sub">y</span></div>
+  <div class="ms-grid"><label>Speech - phrase &amp; short sentences at</label><input type="number" step="0.1" id="ms_phrase"><span class="item-sub">y</span></div>
+</div>
+<div class="card">
+  <div class="section-title">學校／早療 School / Early Intervention</div>
+  <div class="field-row"><label>就學情形</label>
+    <select id="s_school">
+      <option>尚未就學</option><option>公托</option><option>私托</option><option>公幼</option><option>私幼</option>
+      <option>國小普通班</option><option>國小特教班</option><option>巡迴輔導</option><option>資源班</option><option>融合班</option>
+    </select>
+  </div>
+  <div class="field-row"><label>學校表現（學業/體育）</label><input type="text" id="s_school_perf" placeholder=""></div>
+  <div class="field-row"><label>定期早療</label><input type="text" id="s_ei" placeholder="目前接受之早療項目與頻率"></div>
+</div>
+`;
+document.getElementById('s_ga_type').addEventListener('change', e=>{
+  document.getElementById('s_ga_week').style.display = e.target.value==='preterm' ? 'block':'none';
+});
+document.getElementById('s_delivery_type').addEventListener('change', e=>{
+  document.getElementById('s_cs_reason').style.display = e.target.value==='CS' ? 'block':'none';
+});
+function getChildAgeMonthsFromSubjective(){
+  const y = parseInt(document.getElementById('s_age_y').value)||0;
+  const m = parseInt(document.getElementById('s_age_m').value)||0;
+  return y*12+m;
+}
+function buildSubjectiveText(){
+  const v = id => document.getElementById(id)?.value || '';
+  const lines = [];
+  lines.push(`# Subjective`);
+  lines.push(`[年齡：${v('s_age_y')||0}y${v('s_age_m')||0}m], come with ${v('s_cc')}${v('s_cc_note')?'（'+v('s_cc_note')+'）':''}`);
+  lines.push('');
+  lines.push(`[Birth History]`);
+  lines.push(`G${v('s_g')}P${v('s_p')}`);
+  const gaType = document.getElementById('s_ga_type').value;
+  lines.push(gaType==='full' ? 'Full term' : `Preterm, ${v('s_ga_week')}wk`);
+  const delivery = document.getElementById('s_delivery_type').value;
+  lines.push(delivery==='NSD' ? 'NSD' : `C/S（${v('s_cs_reason')}）`);
+  lines.push(`BBW: ${v('s_bbw')}g`);
+  lines.push(`Perinatal history: ${v('s_perinatal')}`);
+  lines.push(`Hospitalization: ${v('s_hosp')}`);
+  lines.push(`OPD follow-up: ${v('s_opd')}`);
+  lines.push(`視力/聽力: ${v('s_vh')}`);
+  lines.push('');
+  lines.push(`[Family]`);
+  lines.push(`Father: ${v('s_father')}`);
+  lines.push(`Mother: ${v('s_mother')}`);
+  lines.push(`兄弟姐妹: ${v('s_sibling')}`);
+  lines.push(`Caregiver: ${v('s_caregiver')}`);
+  const interactSel = Array.from(document.querySelectorAll('#s_interaction_chips input:checked')).map(o=>o.value).join(', ');
+  lines.push(`如何帶: ${interactSel}`);
+  lines.push('');
+  lines.push(`[Developmental milestones]`);
+  lines.push(`GM: sit without support at ${v('ms_sit')||'__'}y, stand at ${v('ms_stand')||'__'}y, walk at ${v('ms_walk')||'__'}y, jump at ${v('ms_jump')||'__'}y, stair at ${v('ms_stair')||'__'}y`);
+  lines.push(`FM: grasp at ${v('ms_grasp')||'__'}y, pincer grasp at ${v('ms_pincer')||'__'}y, throw ball/piling up at ${v('ms_throw')||'__'}y, door knob/turn book page at ${v('ms_doorknob')||'__'}y`);
+  lines.push(`Speech: first word at ${v('ms_firstword')||'__'}y, phrase & short sentences at ${v('ms_phrase')||'__'}y`);
+  lines.push('');
+  lines.push(`[School/early intervention]`);
+  lines.push(`School: ${v('s_school')}`);
+  lines.push(`School performance: ${v('s_school_perf')}`);
+  lines.push(`Regular early intervention: ${v('s_ei')}`);
+  return lines.join('\n');
+}
+
+/* ================= OBJECTIVE — 年齡階梯式評估 ================= */
+const DOMAINS = {
+  "Gross Motor": [
+    {age:2,zh:"抬頭（俯臥）",en:"head up in prone"},{age:3.5,zh:"頭控穩定",en:"stable head control"},
+    {age:4,zh:"手肘撐",en:"prone on elbows"},{age:4,zh:"翻一半/側翻",en:"roll to side"},
+    {age:5,zh:"仰躺變趴姿",en:"roll back to tummy"},{age:6,zh:"手掌撐",en:"prone on hands"},
+    {age:6,zh:"趴姿變仰躺",en:"roll tummy to back"},{age:7,zh:"坐姿手撐",en:"sit with hand support"},
+    {age:7.5,zh:"手腳交替爬",en:"reciprocal crawling"},{age:8,zh:"坐得穩",en:"stable sitting"},
+    {age:9,zh:"拉著坐到站",en:"pull to stand"},{age:10.5,zh:"扶站/扶走",en:"supported standing/cruising"},
+    {age:13,zh:"獨立走",en:"walk independently"},{age:13.5,zh:"爬樓梯",en:"crawl up stairs"},
+    {age:16.5,zh:"牽手上樓梯",en:"walk upstairs holding hand"},{age:18,zh:"獨立坐到站/蹲",en:"stand from sit/squat unsupported"},
+    {age:21,zh:"扶手上下樓梯",en:"stairs up/down with rail"},{age:24,zh:"跑",en:"run"},
+    {age:27,zh:"雙腳跳",en:"jump with both feet"},{age:36,zh:"樓梯不扶獨立上下",en:"stairs up/down without support"},
+    {age:36,zh:"上樓梯跨階",en:"upstairs step-over-step"},{age:48,zh:"單腳站3秒/單腳跳2下",en:"stand on one foot 3s / hop x2"},
+    {age:48,zh:"下樓梯跨階",en:"downstairs step-over-step"},{age:60,zh:"單腳站5-10秒/單腳跳5下",en:"stand on one foot 5-10s / hop x5"},
+  ],
+  "Fine Motor": [
+    {age:2,zh:"手打開",en:"hand open"},{age:3,zh:"手到嘴/抓物搖晃",en:"hand to mouth / shake held object"},
+    {age:6,zh:"整隻手掌撈",en:"raking grasp"},{age:9,zh:"拇指食指指腹夾",en:"crude pincer grasp"},
+    {age:12,zh:"拇指食指指尖夾",en:"mature pincer grasp"},{age:15,zh:"手指抓食物入口",en:"finger feeding"},
+    {age:15,zh:"手掌抓筆",en:"palmar grasp of pen"},{age:18,zh:"堆積木2個",en:"stack 2 blocks"},
+    {age:18,zh:"塗鴉",en:"scribble"},{age:18,zh:"脫襪子",en:"take off socks"},
+    {age:18,zh:"丟球（平推）",en:"throw ball (push)"},{age:20,zh:"完成簡單形狀板（3塊）",en:"3-piece form board"},
+    {age:24,zh:"2塊拼圖",en:"2-piece puzzle"},{age:24,zh:"堆積木4-6個",en:"stack 4-6 blocks"},
+    {age:24,zh:"畫直線",en:"draw a line"},{age:24,zh:"湯匙/杯子使用",en:"use spoon/cup"},
+    {age:30,zh:"脫鬆緊褲",en:"take off loose pants"},{age:36,zh:"堆積木10個",en:"stack 10 blocks"},
+    {age:36,zh:"畫圓",en:"copy circle"},{age:36,zh:"三/四點式握筆",en:"tripod/quadruped grasp (elbow/wrist movement)"},
+    {age:36,zh:"穿褲子",en:"put on pants"},{age:48,zh:"畫十字",en:"copy cross"},
+    {age:48,zh:"過肩丟球",en:"overhead throw"},{age:54,zh:"畫正方形",en:"copy square"},
+    {age:54,zh:"接球",en:"catch ball"},{age:60,zh:"畫三角形或人",en:"copy triangle / draw a person"},
+    {age:66,zh:"動態三點式握筆",en:"dynamic tripod grasp (finger movement)"},{age:72,zh:"畫菱形",en:"copy diamond"},
+  ],
+  "Language": [
+    {age:2.5,zh:"咕咕聲",en:"cooing"},{age:5,zh:"牙牙學語",en:"babbling"},
+    {age:9,zh:"以動作表達需求／理解「不」",en:"gestures for needs / understands \"no\""},
+    {age:12,zh:"叫爸爸媽媽/對名字有反應",en:"says mama/papa / responds to name"},
+    {age:15,zh:"用手指表達需求",en:"points for needs"},
+    {age:18,zh:"5-10個單字/部分身體部位/簡單指令",en:"5-10 words / some body parts / simple commands"},
+    {age:24,zh:"兩字詞/50個單字/單步驟指令",en:"two-word phrases / >50 words / one-step commands"},
+    {age:30,zh:"使用代名詞（你我他）",en:"uses pronouns"},
+    {age:36,zh:"簡單來回對話/說出名字年紀性別",en:"simple conversation / states name, age, sex"},
+    {age:48,zh:"敘述事件/複述短故事",en:"reports events / retells short stories"},
+    {age:60,zh:"完整敘述故事或圖片內容/簡單人際關係/數字",en:"tells stories/describes pictures in full sentences / relationships / numbers"},
+  ],
+  "Cognition": [
+    {age:2,zh:"視覺追視",en:"visual pursuit"},{age:4,zh:"看著自己的手",en:"watches own hand"},
+    {age:6,zh:"伸手抓玩具",en:"reaches for toys"},{age:5.5,zh:"部分遮住仍會找",en:"finds partially hidden object"},
+    {age:7.5,zh:"玩躲貓貓",en:"plays peek-a-boo"},{age:10,zh:"物品移到B仍去A找",en:"A-not-B error"},
+    {age:9,zh:"感覺動作式玩法",en:"sensorimotor play (shake/bang/throw)"},
+    {age:10.5,zh:"容器玩法",en:"container play (in/out)"},
+    {age:16.5,zh:"功能性玩法",en:"functional play (e.g. feed doll with spoon)"},
+    {age:18,zh:"1個形狀配對",en:"matches 1 shape"},{age:20,zh:"3塊形狀板",en:"3-piece form board"},
+    {age:21,zh:"簡單假扮遊戲",en:"simple pretend play (e.g. pretend phone call)"},
+    {age:24,zh:"圖片/顏色配對",en:"matches pictures/colors"},{age:24,zh:"2塊拼圖",en:"2-piece puzzle"},
+    {age:30,zh:"兩步驟指令",en:"two-step commands"},{age:30,zh:"象徵性遊戲",en:"symbolic play"},
+    {age:36,zh:"認得一種顏色/大小概念",en:"knows one color / size concept"},
+    {age:48,zh:"說出基本顏色/數到5/方向",en:"names basic colors / counts to 5 / directions"},
+    {age:48,zh:"角色扮演遊戲",en:"role play (e.g. doctor/teacher)"},
+    {age:60,zh:"說出數字名稱/數到10/說出日期/注意力10分鐘",en:"names digits / counts to 10 / states date / attention >10min"},
+  ],
+  "Psychosocial/Play": [
+    {age:1,zh:"注視臉孔",en:"stares at face"},{age:3,zh:"對人微笑",en:"social smile"},
+    {age:4,zh:"認得熟悉臉孔",en:"recognizes familiar face"},{age:5,zh:"拉玩具會抵抗",en:"resists toy being pulled away"},
+    {age:6,zh:"笑出聲",en:"laughs aloud"},{age:6,zh:"認得家人",en:"recognizes family members"},
+    {age:6.5,zh:"怕生/分離焦慮開始",en:"onset of stranger/separation anxiety"},
+    {age:8,zh:"玩躲貓貓",en:"plays peek-a-boo"},{age:12,zh:"揮手再見",en:"waves bye-bye"},
+    {age:12,zh:"模仿動作",en:"imitation"},{age:12,zh:"怕生（高峰）",en:"stranger anxiety (peak)"},
+    {age:15,zh:"互動遊戲（擊掌）",en:"interactive play (high-five)"},
+    {age:18,zh:"回應呼喚名字/簡單假扮/分享/搶玩具/照鏡子",en:"responds to name / simple pretend / shares / fights for toys / mirror play"},
+    {age:24,zh:"模仿/較獨立有主見/對其他小孩有興趣",en:"imitation / more independent / interest in peers"},
+    {age:24,zh:"獨自玩",en:"solitary play"},{age:24,zh:"與其他小孩有些分享",en:"some sharing with peers"},
+    {age:36,zh:"角色扮演/輪流/關心他人/情緒更多",en:"role play / taking turns / concern for others / more emotions"},
+    {age:36,zh:"平行遊戲",en:"parallel play"},{age:36,zh:"簡短團體遊戲",en:"brief group play"},
+    {age:36,zh:"大小便訓練",en:"toilet training"},
+    {age:48,zh:"簡單規則遊戲或角色扮演/能坐著上課/情緒穩定",en:"simple rule games or role play / sits for class / stable emotional control"},
+    {age:48,zh:"合作遊戲",en:"cooperative play"},
+    {age:60,zh:"規則遊戲/豐富角色扮演/輪流/注意力>10分鐘",en:"games with rules / rich role play / taking turns / attention >10min"},
+  ],
+  "構音 Articulation": [
+    {age:36,zh:"ㄅㄇㄉㄋㄍㄏ（爸爸媽媽買蛋糕喝牛奶）",en:null},
+    {age:48,zh:"ㄆㄊㄎㄌㄈㄐ（跑跑跳跳快樂飛機）",en:null},
+    {age:54,zh:"ㄒㄑ（小企鵝）",en:null},{age:60,zh:"ㄗㄙ（早安禮拜三）",en:null},
+    {age:66,zh:"ㄘ（草莓）",en:null},{age:72,zh:"ㄓㄔㄕㄖ（蜘蛛樹上吃肉肉）",en:null},
+  ],
+  "Speech": [
+    {age:2,zh:"笑聲",en:"laugh sound"},{age:3,zh:"尖叫",en:"scream"},
+    {age:5,zh:"轉頭看聲音來源",en:"turns to sound"},{age:6,zh:"發出母音聲",en:"makes vowel sounds"},
+    {age:6,zh:"無意義疊音",en:"meaningless babble (ba/ma/da)"},{age:9,zh:"理解「不」",en:"understands \"no\""},
+    {age:12,zh:"有意義使用爸媽/對名字有反應",en:"meaningful mama/papa / responds to name"},
+  ],
+  "Comprehension": [
+    {age:18,zh:"聽懂至少1個五官部位/部分簡單指令",en:"understands ≥1 body part / some simple commands"},
+    {age:24,zh:"聽懂yes/no問句/單步驟指令/指認至少一種圖卡",en:"understands yes/no questions / one-step commands / points to ≥1 picture"},
+    {age:36,zh:"聽懂兩步驟指令",en:"understands two-step commands"},
+    {age:48,zh:"聽懂三步驟以上指令",en:"understands ≥3-step commands"},
+  ],
+  "Expression": [
+    {age:18,zh:"正確叫爸媽/說出10個字/能用手指比出需求",en:"correctly says mama/papa / >10 words / points for needs"},
+    {age:24,zh:"指認圖片/哼兒歌/連詞短句",en:"points to pictures / hums nursery songs / short phrases"},
+    {age:36,zh:"4-5詞句子/問問題/回答年齡性別名字/代名詞",en:"4-5 word sentences / asks questions / states age/sex/name / uses pronouns"},
+    {age:48,zh:"完整句子/敘述部分故事/問為什麼",en:"complete sentences / partial story narration / asks \"why\""},
+    {age:60,zh:"開放式問答/敘述完整故事",en:"open-ended Q&A / tells complete stories"},
+  ],
+};
+Object.values(DOMAINS).forEach(arr=> arr.sort((a,b)=>a.age-b.age));
+
+let childAgeMonths = null;
+let domainState = {};
+let currentDomain = Object.keys(DOMAINS)[0];
+
+const oBox = document.getElementById('objectivePane');
+oBox.innerHTML = `
+<div class="card" id="ageSummaryCard">
+  <div class="section-title">兒童年齡（承接 Subjective）</div>
+  <div class="item-sub" id="ageSummaryText">尚未於 Subjective 填寫年齡</div>
+  <button class="action btn-primary" style="margin-top:10px;" id="o_start">開始 / 重新整理評估（依年齡從相近項目起測）</button>
+</div>
+<div class="card" id="domainTabsCard" style="display:none;">
+  <div class="section-title">領域</div>
+  <div class="badge-row" id="domainTabs"></div>
+</div>
+<div class="card" id="ladderCard" style="display:none;"></div>
+`;
+function initObjectiveAge(){
+  const m = getChildAgeMonthsFromSubjective();
+  document.getElementById('ageSummaryText').textContent = m>0 ? `年齡：${ageLabel(m)}` : '尚未於 Subjective 填寫年齡';
+}
+document.getElementById('o_start').addEventListener('click', ()=>{
+  childAgeMonths = getChildAgeMonthsFromSubjective();
+  domainState = {};
+  Object.keys(DOMAINS).forEach(d=>{
+    const items = DOMAINS[d];
+    let startIdx = items.findIndex(it=> it.age > childAgeMonths);
+    if(startIdx === -1) startIdx = items.length-1;
+    else if(startIdx>0) startIdx = startIdx-1;
+    domainState[d] = {idx:startIdx, history:[]};
+  });
+  document.getElementById('domainTabsCard').style.display='block';
+  document.getElementById('ladderCard').style.display='block';
+  renderDomainTabs();
+  renderLadder();
+});
+function renderDomainTabs(){
+  const c = document.getElementById('domainTabs');
+  c.innerHTML = Object.keys(DOMAINS).map(d=>{
+    const done = domainState[d] && domainState[d].history.length>0;
+    return `<button class="domain-pill ${d===currentDomain?'active':''} ${done?'done':''}" data-d="${d}">${d.split(' ')[0]}</button>`;
+  }).join('');
+  c.querySelectorAll('button').forEach(b=>b.addEventListener('click', ()=>{
+    currentDomain = b.getAttribute('data-d'); renderDomainTabs(); renderLadder();
+  }));
+}
+function renderLadder(){
+  const items = DOMAINS[currentDomain];
+  const st = domainState[currentDomain];
+  const c = document.getElementById('ladderCard');
+  const it = items[st.idx];
+  let historyHtml = st.history.map(h=>`<div class="hrow"><span>${h.zh}（${ageLabel(h.age)}）</span><span class="${h.result==='pass'?'tag green':'tag red'}">${h.result==='pass'?'通過':'未通過'}</span></div>`).join('');
+  c.innerHTML = `
+    <div class="section-title">${currentDomain}<span class="pill" style="margin-left:8px;">小孩年齡：${ageLabel(childAgeMonths)}</span></div>
+    <div class="ladder-item">
+      <div class="age">對應年齡：${ageLabel(it.age)}</div>
+      <div class="label">${it.zh}</div>
+      <div class="ladder-actions">
+        <button class="pass-btn" id="passBtn">✓ 通過</button>
+        <button class="fail-btn" id="failBtn">✗ 未通過</button>
+      </div>
+    </div>
+    <div class="ladder-history">${historyHtml || '<div class="item-sub">尚未開始測試</div>'}</div>
+  `;
+  document.getElementById('passBtn').addEventListener('click', ()=>{
+    st.history.push({...it, result:'pass'});
+    if(st.idx < items.length-1){ st.idx++; renderLadder(); }
+    else { renderLadderEnd(); }
+    renderDomainTabs();
+  });
+  document.getElementById('failBtn').addEventListener('click', ()=>{
+    st.history.push({...it, result:'fail'});
+    if(st.idx > 0){ st.idx--; renderLadder(); }
+    else { renderLadderEnd(); }
+    renderDomainTabs();
+  });
+}
+function renderLadderEnd(){
+  const c = document.getElementById('ladderCard');
+  const st = domainState[currentDomain];
+  let historyHtml = st.history.map(h=>`<div class="hrow"><span>${h.zh}（${ageLabel(h.age)}）</span><span class="${h.result==='pass'?'tag green':'tag red'}">${h.result==='pass'?'通過':'未通過'}</span></div>`).join('');
+  c.innerHTML = `<div class="section-title">${currentDomain}</div><div class="result-box">已測完該領域所有項目</div><div class="ladder-history">${historyHtml}</div>`;
+}
+function ageLabel(m){
+  if(m===null||m===undefined) return '-';
+  if(m<24) return `${m}個月`;
+  return `${(m/12).toFixed(1)}歲`;
+}
+function buildObjectiveText(){
+  if(childAgeMonths===null) return '(Objective assessment not yet performed)';
+  const lines = [`# Objective`, `Age: ${ageLabel(childAgeMonths)}`, ''];
+  Object.keys(DOMAINS).forEach(d=>{
+    const st = domainState[d];
+    if(!st || st.history.length===0) return;
+    lines.push(`[${d}]`);
+    const isArt = d.includes('構音');
+    st.history.forEach(h=>{
+      const desc = isArt ? h.zh : (h.en || h.zh);
+      lines.push(`${desc}: ${h.result==='pass'?'Pass':'Failed'}`);
+    });
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
+/* ================= ASSESSMENT ================= */
+const ASD_CRITERIA = {
+  "Social communication and social interaction": [
+    "social approach（比較喜歡自己玩）","back-and-forth conversation（無）","sharing of interest and emotion 分享興趣和情感",
+    "initiate social interactions or group play 發起社交互動或小組遊戲","integrated verbal and nonverbal communication 融合口頭和非口頭交流",
+    "eye contact 目光接觸","instrumental gestures 工具性手勢","facial expression 臉部表情",
+    "adjusting behaviors to suit various social contexts 調整行為以適應各種社會背景","imaginative play 富有想像力的遊戲",
+    "sharing behaviors 分享","spontaneous imitation of actions 自發模仿","offering comfort 提供關心","interest in peers 對同儕的興趣",
+  ],
+  "Restricted, repetitive behaviors and interests": [
+    "motor stereotypes 刻板動作","lining up toys 排列玩具","echolalia 仿說","distress in small changes 無法承受小變化",
+    "rigid thinking 僵化的思考","rituals 儀式","inflexible adherence to routines 遵照慣例","unusual attachment to objects 對物體的異常執著",
+    "toe walking 墊腳走路","restricted and fixated interests 興趣有限但極強","hyperreactive to sensory input 對感官輸入反應過度",
+    "hyporeactive to sensory input 會自我刺激",
+  ],
+};
+const ADHD_CRITERIA = {
+  "Inattention（需 ≥7/9，持續至少六個月）": [
+    "注意力散渙 (Task inattention)：難以長時間維持專注力","聽而不聞 (Appears not to listen)：當面講話時像在發呆或神遊",
+    "組織困難 (Difficulty organising tasks)：難以安排工作優先順序","逃避心力任務 (Avoids sustained mental effort)：對需長時間動腦任務抗拒或拖延",
+    "弄丟東西 (Often loses things necessary for tasks)","容易分心 (Easily distracted)","健忘 (Often forgetful)",
+    "粗心大意 (Overlooks details)","無法完成任務 (Fails to finish tasks)",
+  ],
+  "Hyperactivity-Impulsivity（需 ≥6/9，持續至少六個月）": [
+    "手腳躁動 (Fidgeting)：在座位上扭動","擅離座位 (Leaves seat)：在教室經常離開位置","不當跑跳 (Running/Climbing)：在不適當場合過度跑跳",
+    "無法安靜 (Unable to play quietly)：難以安靜參與遊戲，干擾他人","像裝了馬達 (On the go / Driven by a motor)：持續地活動",
+    "說話過多 (Talking excessively)","脫口而出 (Blurts out answer)：問題還沒說完就搶答","難以等待 (Difficulty waiting turn)：難以排隊或輪流",
+    "打斷或侵擾 (Interrupts or intrudes)：打斷他人對話或強行加入遊戲",
+  ],
+};
+const DIAGNOSES = [
+  {code:"F70-F79", name:"Intellectual Developmental Disorder 智能發展障礙", detail:"依IQ分級：F70輕度(50-55~70) / F71中度(35-40~50-55) / F72重度(20-25~35-40) / F73極重度(<20-25) / F78其他 / F79未明示。需IQ<70且日常功能/社交受影響(adaptive behavior)，發病在22歲以下(AAIDD)或18歲以下(DSM-5/ICD-10)。"},
+  {code:"F88（暫時性）", name:"Global Developmental Delay 全面性發展遲緩", detail:"限5歲以下使用之暫時性診斷。需至少兩個領域遲緩：粗大/精細動作、語言與溝通、認知能力、社交與情緒能力、日常生活活動(ADL)。"},
+  {code:"F80.9", name:"Developmental Language Disorder (DLD) 發展性語言障礙", detail:"3歲前稱Late talker（70-80%會於4歲前追趕上）；3歲後且持續存在稱DLD，語言分水嶺為4歲。需造成功能性障礙，且非由腦傷、失聰、缺乏語言暴露、IDD或ASD解釋。"},
+  {code:"F80.0", name:"Speech Sound Disorder 構音障礙", detail:"4歲是重要分水嶺（90-100%說話內容應可被聽懂），8歲為語音成熟界線。需排除聽力受損、唇顎裂、口腔動作問題、智力顯著低於心理年齡、腦性麻痺/腦傷、遺傳、環境因素。"},
+  {code:"F80.81", name:"Childhood Onset Fluency Disorder 口吃", detail:"說話流暢度與節奏擾亂，通常2-7歲間出現。需與發育性不流暢(2-3.5歲)區別。持續>6個月且有阻斷/過度用力則較可能為流暢障礙。75-80%於青春期前自行痊癒。"},
+  {code:"F80.82", name:"Social (Pragmatic) Communication Disorder 社交語用溝通障礙", detail:"社交、情境切換、溝通規則、推論理解困難。需排除聽力受損、神經系統疾病、IDD、ASD（區別在於有無侷限重複行為/興趣）。通常學齡才做診斷。"},
+  {code:"F84.0", name:"Autism Spectrum Disorder 自閉症類群障礙", detail:"2歲可診斷（3-5歲入園後為診斷高峰）。需跨情境固著且有嚴重度。篩檢：M-CHAT-R/F、SCQ；診斷：ADOS-2、ADI-R；嚴重度：CARS-2、SRS-2。", checklist:ASD_CRITERIA},
+  {code:"F90", name:"Attention-Deficit Hyperactivity Disorder 注意力不足過動症", detail:"4歲後才診斷；症狀需於12歲前出現；17歲以上診斷條件降低。評估工具：SNAP-IV、CPT、WISC-V。", checklist:ADHD_CRITERIA},
+  {code:"F81.0", name:"閱讀障礙 Dyslexia", detail:"學齡發生、持續且影響學業/日常生活。需排除認知障礙、視聽知覺障礙、神經疾患、環境不利因素、智能障礙。"},
+  {code:"F81.81", name:"書寫障礙 Dysgraphia", detail:"同SLD排除條件，影響書寫/拼字之特定學習障礙。"},
+  {code:"F81.2", name:"算術障礙 Dyscalculia", detail:"同SLD排除條件，影響數學/算術能力之特定學習障礙。"},
+  {code:"F82", name:"Developmental Coordination Disorder 發展性協調障礙", detail:"需排除認知與神經系統器質性疾病。影響日常生活或學習。4歲以上才診斷。"},
+  {code:"F98", name:"Stereotyped Movement Disorder 刻板動作障礙", detail:"重複、看似驅動性、無功能性的動作行為，需影響日常功能或造成自傷風險，並排除其他神經/精神疾病解釋。"},
+  {code:"F95", name:"Tic Disorder / Tourette's Disorder 妥瑞氏症/抽動障礙", detail:"不自主、突發、快速、重複的動作或聲音抽動，需符合病程與多樣性條件，排除其他物質或疾病造成。"},
+  {code:"F88 / F89", name:"其他/未明示神經發展障礙", detail:"F88: 三項以下領域遲緩或廣泛說不清楚、尚未完整評估(workup)。F89: 四項領域皆遲緩。"},
+];
+let selectedDx = new Set();
+let critState = {};
+const aBox = document.getElementById('assessmentPane');
+aBox.innerHTML = `
+<div class="card">
+  <div class="section-title">常見診斷選單（點選展開內容；ASD/ADHD可勾選細項）</div>
+  <div id="dxList"></div>
+</div>
+<div class="card">
+  <div class="section-title">📑 台灣官方檢核工具連結</div>
+  <div class="badge-row">
+    <a class="choice-btn" href="https://health.gov.taipei/News_Content.aspx?n=890BB287E6A590F0&sms=FEDD3204A66CD37D&s=341720F573D7CFC9" target="_blank">臺北市學齡前兒童發展檢核表</a>
+    <a class="choice-btn" href="https://www.hpa.gov.tw/Pages/List.aspx?nodeid=4821" target="_blank">國健署兒童發展篩檢</a>
+  </div>
+</div>
+<div class="card">
+  <div class="section-title">📝 Assessment 補充說明</div>
+  <textarea id="a_notes" placeholder="額外評估意見、轉介計畫..."></textarea>
+</div>
+`;
+function renderDxList(){
+  const c = document.getElementById('dxList');
+  c.innerHTML = DIAGNOSES.map((d,i)=>{
+    if(!critState[i]) critState[i] = {};
+    let checklistHtml = '';
+    if(d.checklist){
+      checklistHtml = Object.entries(d.checklist).map(([cat, items])=>{
+        if(!critState[i][cat]) critState[i][cat] = new Set();
+        const count = critState[i][cat].size;
+        return `<div class="checklist-cat">${cat} <span class="count">(已選 ${count}/${items.length})</span></div>` +
+          items.map((item,ii)=>`
+            <label class="crit-item">
+              <input type="checkbox" data-dx="${i}" data-cat="${cat}" data-item="${ii}" ${critState[i][cat].has(ii)?'checked':''}>
+              <span>${item}</span>
+            </label>`).join('');
+      }).join('');
+    }
+    return `
+    <div class="dx-item ${selectedDx.has(i)?'selected':''}" data-i="${i}">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div><span class="dx-code">${d.code}</span><div class="item-name">${d.name}</div></div>
+        <input type="checkbox" ${selectedDx.has(i)?'checked':''} data-cb="${i}" style="width:18px;height:18px;accent-color:var(--accent);">
+      </div>
+      <div class="dx-detail">${d.detail}${checklistHtml}</div>
+    </div>`;
+  }).join('');
+  c.querySelectorAll('.dx-item').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      if(e.target.matches('input')) return;
+      el.classList.toggle('expanded');
+    });
+  });
+  c.querySelectorAll('input[data-cb]').forEach(cb=>{
+    cb.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const i = parseInt(cb.getAttribute('data-cb'));
+      if(cb.checked) selectedDx.add(i); else selectedDx.delete(i);
+      renderDxList();
+    });
+  });
+  c.querySelectorAll('input[data-item]').forEach(cb=>{
+    cb.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const i = parseInt(cb.getAttribute('data-dx'));
+      const cat = cb.getAttribute('data-cat');
+      const ii = parseInt(cb.getAttribute('data-item'));
+      if(cb.checked) critState[i][cat].add(ii); else critState[i][cat].delete(ii);
+      renderDxList();
+      document.querySelectorAll('.dx-item')[i].classList.add('expanded');
+    });
+  });
+}
+renderDxList();
+function buildAssessmentText(){
+  const lines = [`# Assessment`];
+  if(selectedDx.size===0){ lines.push('(No diagnosis selected)'); }
+  Array.from(selectedDx).sort((a,b)=>a-b).forEach(i=>{
+    const d = DIAGNOSES[i];
+    lines.push(`${d.code} ${d.name}`);
+    if(d.checklist){
+      Object.entries(d.checklist).forEach(([cat, items])=>{
+        const sel = critState[i] && critState[i][cat] ? Array.from(critState[i][cat]).sort((a,b)=>a-b) : [];
+        if(sel.length>0){
+          lines.push(`  - ${cat}: ${sel.length}/${items.length}`);
+          sel.forEach(ii=> lines.push(`    • ${items[ii]}`));
+        }
+      });
+    }
+  });
+  const notes = document.getElementById('a_notes').value.trim();
+  if(notes) lines.push(`\nNote: ${notes}`);
+  return lines.join('\n');
+}
+
+/* ================= COPY BUTTONS ================= */
+document.getElementById('copyS').addEventListener('click', ()=> rtCopy(buildSubjectiveText(), document.getElementById('savedNote')));
+document.getElementById('copyO').addEventListener('click', ()=> rtCopy(buildObjectiveText(), document.getElementById('savedNote')));
+document.getElementById('copyA').addEventListener('click', ()=> rtCopy(buildAssessmentText(), document.getElementById('savedNote')));
+document.getElementById('copyAll').addEventListener('click', ()=> rtCopy([buildSubjectiveText(), buildObjectiveText(), buildAssessmentText()].join('\n\n'), document.getElementById('savedNote')));
+
+renderMainTabs();
+</script>
+</body></html>

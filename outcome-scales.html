@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>功能量表計分器 | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css">
+<style>.opt-btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:6px 11px;font-size:11.5px;cursor:pointer;margin:3px 4px 3px 0;}
+.opt-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.q-card{padding-bottom:12px;margin-bottom:12px;border-bottom:1px dashed var(--line);}
+.q-card:last-child{border-bottom:none;}
+.subscale-title{font-weight:800;color:var(--accent2);font-size:13px;margin:14px 0 8px;}
+</style>
+</head>
+<body><div class="wrap">
+<a class="back" href="index.html">← 回工具箱首頁</a>
+<h1>📊 功能量表計分器 7 合 1</h1>
+<div class="sub">QuickDASH · KOOS · HOOS · WOMAC · ODI · NDI · LEFS</div>
+<div class="disclaimer">⚠️ QuickDASH／KOOS 題目為依官方量表概念改編之中文簡化版，非官方驗證翻譯，僅供臨床快速評估參考；研究等級請使用官方授權正式量表。HOOS／WOMAC／ODI／NDI／LEFS 僅提供計分公式換算，題目請依官方量表本詢問。</div>
+
+<div class="card">
+  <div class="section-title">選擇量表</div>
+  <div class="badge-row" id="scaleTabs"></div>
+</div>
+
+<div class="card" id="calcCard"></div>
+
+<div class="toolbar">
+  <button class="action btn-primary" id="saveBtn">儲存結果</button>
+  <button class="action btn-ghost" id="exportBtn">複製文字摘要</button>
+</div>
+<div class="saved-note" id="savedNote"></div>
+
+<div class="card" style="display:none;" id="historyCard">
+  <div class="section-title">🕓 歷史紀錄</div>
+  <div id="historyList"></div>
+</div>
+<footer>僅供醫療教育用途 · 資料不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script src="common.js"></script>
+<script>
+const STORE_KEY = "outcome_scales_v2";
+
+// ---------- QuickDASH 完整題目 ----------
+const QUICKDASH_ITEMS = [
+  {text:"打開緊閉或新的瓶罐", type:"diff"},
+  {text:"從事費力的家務（如刷牆壁、清洗地板）", type:"diff"},
+  {text:"提購物袋或公事包", type:"diff"},
+  {text:"洗身體背部", type:"diff"},
+  {text:"用刀子切食物", type:"diff"},
+  {text:"從事需用力或有衝擊的休閒活動（如高爾夫、網球、槌球）", type:"diff"},
+  {text:"過去一週，手臂/肩/手的問題對社交活動的干擾程度", type:"interfere"},
+  {text:"過去一週，因手臂/肩/手問題受限於工作或日常活動的程度", type:"limit"},
+  {text:"手臂、肩膀、或手部疼痛的嚴重程度", type:"severity"},
+  {text:"手臂、肩膀、或手部刺痛（麻）感的嚴重程度", type:"severity"},
+  {text:"因疼痛導致睡眠困難的程度", type:"diff_sleep"},
+];
+const QUICKDASH_OPTS = {
+  diff: ["無困難","輕度困難","中度困難","重度困難","無法執行"],
+  interfere: ["完全沒有","輕度","中度","重度","極度"],
+  limit: ["完全沒有限制","輕度限制","中度限制","嚴重限制","無法執行"],
+  severity: ["無","輕度","中度","重度","極重度"],
+  diff_sleep: ["無困難","輕度困難","中度困難","重度困難","難到睡不著"],
+};
+let qdAnswers = {};
+
+// ---------- KOOS 5子量表題目（改編簡化版） ----------
+const KOOS_SUBSCALES = {
+  "症狀 Symptoms": ["膝蓋腫脹","活動時感覺磨擦音或喀喀聲","活動時膝蓋卡住或鎖住感","無法完全伸直膝蓋","無法完全彎曲膝蓋"],
+  "疼痛 Pain": ["一般膝蓋疼痛頻率","扭動/旋轉膝蓋時疼痛","完全伸直膝蓋時疼痛","完全彎曲膝蓋時疼痛","走在平地上疼痛","上下樓梯疼痛","夜間躺床時疼痛","坐著或躺著時疼痛","站立時疼痛"],
+  "日常活動 ADL": ["下樓梯","上樓梯","從坐姿站起","站立","彎腰撿地上物品","走在平地","上下車","購物","穿襪子/褲子","起床","脫襪子/褲子","躺床翻身","進出浴缸","坐姿如廁","粗重家務","輕度家務"],
+  "運動休閒 Sport/Rec": ["蹲下","跑步","跳躍","扭轉/旋轉患膝","跪下"],
+  "生活品質 QOL": ["多常意識到膝蓋問題","是否因膝蓋問題改變生活型態以避免傷膝活動","對膝蓋的信賴/信心程度","整體膝蓋造成的困擾程度"],
+};
+const KOOS_OPTS = ["無","輕度","中度","重度","極重度"];
+let koosAnswers = {}; // {subscale: {idx: score}}
+
+const SCALES = {
+  quickdash: { label:"QuickDASH", kind:"detailed-quickdash" },
+  koos: { label:"KOOS（膝）", kind:"detailed-koos" },
+  hoos: {
+    label: "HOOS（髖）", region:"5 子量表：疼痛/症狀/日常活動/運動休閒/生活品質", kind:"generic-multi",
+    subs:["疼痛 Pain","症狀 Symptoms","日常活動 ADL","運動休閒 Sport/Rec","生活品質 QOL"],
+    formula:(sum,n)=>100-(sum/(n*4))*100, note:"公式：100 − (分數總和÷(題數×4))×100，分數越高代表功能越好"
+  },
+  womac: {
+    label:"WOMAC", region:"3 子量表：疼痛(5題)/僵硬(2題)/功能(17題)", kind:"generic-multi",
+    subs:[{name:"疼痛 Pain（5題）",max:5},{name:"僵硬 Stiffness（2題）",max:2},{name:"功能 Function（17題）",max:17}],
+    formula:(sum,n)=>(sum/(n*4))*100, note:"公式：(分數總和÷(題數×4))×100，分數越高代表症狀/失能越嚴重"
+  },
+  odi: { label:"ODI 腰痛失能", region:"10個面向，每項0–5分", kind:"generic-single", items:10,
+    formula:(sum,n)=>(sum/(n*5))*100, note:"0–20%輕度 / 21–40%中度 / 41–60%重度 / 61–80%極重度 / 81–100%臥床或誇大" },
+  ndi: { label:"NDI 頸部失能", region:"10個面向，每項0–5分", kind:"generic-single", items:10,
+    formula:(sum,n)=>(sum/(n*5))*100, note:"10–28%輕度 / 30–48%中度 / 50–68%重度 / 72–100%完全失能" },
+  lefs: { label:"LEFS 下肢功能", region:"20題，每題0–4分", kind:"generic-single", items:20,
+    formula:(sum,n)=>sum, note:"總分0–80，分數越高代表功能越好" },
+};
+
+let current = 'quickdash';
+
+function renderTabs(){
+  const c = document.getElementById('scaleTabs');
+  c.innerHTML = Object.entries(SCALES).map(([k,v])=>`<button class="choice-btn ${k===current?'active':''}" data-k="${k}">${v.label}</button>`).join('');
+  c.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{ current = b.getAttribute('data-k'); renderTabs(); renderCalc(); });
+  });
+}
+
+function renderCalc(){
+  const s = SCALES[current];
+  const c = document.getElementById('calcCard');
+  if(s.kind === 'detailed-quickdash'){ renderQuickDash(c); }
+  else if(s.kind === 'detailed-koos'){ renderKoos(c); }
+  else if(s.kind === 'generic-single'){ renderGenericSingle(c, s); }
+  else if(s.kind === 'generic-multi'){ renderGenericMulti(c, s); }
+}
+
+// ---- QuickDASH render ----
+function renderQuickDash(c){
+  c.innerHTML = `<div class="section-title">QuickDASH<span class="pill" style="margin-left:8px;">上肢 / 肩・肘・腕・手</span></div>
+    <div class="sub">11題，1–5分；分數越高代表障礙越嚴重；至少需作答10題才可計分</div>` +
+    QUICKDASH_ITEMS.map((it,i)=>`
+      <div class="q-card">
+        <div class="item-name">${i+1}. ${it.text}</div>
+        <div data-qi="${i}" style="margin-top:6px;">
+          ${QUICKDASH_OPTS[it.type].map((o,oi)=>`<button class="opt-btn" data-v="${oi+1}">${o}</button>`).join('')}
+        </div>
+      </div>`).join('') +
+    `<div class="result-box" id="resultBox" style="margin-top:10px;">作答後自動計算</div>`;
+  c.querySelectorAll('[data-qi]').forEach(group=>{
+    const qi = group.getAttribute('data-qi');
+    group.querySelectorAll('.opt-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        qdAnswers[qi] = parseInt(btn.getAttribute('data-v'));
+        group.querySelectorAll('.opt-btn').forEach(b=>b.classList.toggle('active', b===btn));
+        computeQuickDash();
+      });
+    });
+  });
+  computeQuickDash();
+}
+function computeQuickDash(){
+  const box = document.getElementById('resultBox');
+  const answered = Object.keys(qdAnswers).length;
+  if(answered < 10){ box.innerHTML = `已作答 ${answered}/11 題（需至少10題才可計分）`; return; }
+  const sum = Object.values(qdAnswers).reduce((a,b)=>a+b,0);
+  const score = ((sum/answered) - 1) * 25;
+  box.innerHTML = `<div class="result-num">${score.toFixed(1)}</div><div>已作答 ${answered}/11 題，分數越高代表上肢失能程度越嚴重（範圍0–100）</div>`;
+}
+
+// ---- KOOS render ----
+function renderKoos(c){
+  let html = `<div class="section-title">KOOS（膝）<span class="pill" style="margin-left:8px;">膝關節</span></div>
+    <div class="sub">5大範疇，依過去一週狀況評估，分數越高代表功能越好（0=極重度症狀，100=無症狀）</div>`;
+  Object.entries(KOOS_SUBSCALES).forEach(([sub, items])=>{
+    html += `<div class="subscale-title">${sub}</div>`;
+    items.forEach((item,i)=>{
+      const key = sub+'_'+i;
+      html += `<div class="q-card">
+        <div class="item-name" style="font-size:13px;">${item}</div>
+        <div data-key="${key}" style="margin-top:6px;">
+          ${KOOS_OPTS.map((o,oi)=>`<button class="opt-btn" data-v="${oi}">${o}</button>`).join('')}
+        </div>
+      </div>`;
+    });
+  });
+  html += `<div class="result-box" id="resultBox" style="margin-top:10px;">作答後自動計算</div>`;
+  c.innerHTML = html;
+  c.querySelectorAll('[data-key]').forEach(group=>{
+    const key = group.getAttribute('data-key');
+    group.querySelectorAll('.opt-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        koosAnswers[key] = parseInt(btn.getAttribute('data-v'));
+        group.querySelectorAll('.opt-btn').forEach(b=>b.classList.toggle('active', b===btn));
+        computeKoos();
+      });
+    });
+  });
+  computeKoos();
+}
+function computeKoos(){
+  const box = document.getElementById('resultBox');
+  let html = '';
+  Object.entries(KOOS_SUBSCALES).forEach(([sub, items])=>{
+    let sum=0, count=0;
+    items.forEach((item,i)=>{
+      const key = sub+'_'+i;
+      if(koosAnswers[key] !== undefined){ sum += koosAnswers[key]; count++; }
+    });
+    if(count>0){
+      const score = 100 - (sum/(count*4))*100;
+      html += `<div>${sub}：<b>${score.toFixed(1)}</b>（已答${count}/${items.length}題）</div>`;
+    } else {
+      html += `<div>${sub}：尚未作答</div>`;
+    }
+  });
+  box.innerHTML = html;
+}
+
+// ---- generic single (ODI/NDI/LEFS) ----
+function renderGenericSingle(c, s){
+  c.innerHTML = `
+    <div class="section-title">${s.label}<div class="item-sub">${s.region}</div></div>
+    <div class="grid2">
+      <div><div class="item-sub">已作答題數</div><input type="number" id="nItems" value="${s.items}"></div>
+      <div><div class="item-sub">分數總和</div><input type="number" id="sumScore" placeholder="0"></div>
+    </div>
+    <div class="result-box" id="resultBox" style="margin-top:12px;">輸入後自動計算</div>
+    <div class="item-sub" style="margin-top:8px;">${s.note}</div>`;
+  document.getElementById('nItems').addEventListener('input', ()=>computeGenericSingle(s));
+  document.getElementById('sumScore').addEventListener('input', ()=>computeGenericSingle(s));
+  computeGenericSingle(s);
+}
+function computeGenericSingle(s){
+  const n = parseFloat(document.getElementById('nItems').value) || 0;
+  const sum = parseFloat(document.getElementById('sumScore').value) || 0;
+  const box = document.getElementById('resultBox');
+  if(n<=0){ box.innerHTML='請輸入有效題數'; return; }
+  const score = s.formula(sum, n);
+  box.innerHTML = `<div class="result-num">${score.toFixed(1)}</div>`;
+}
+
+// ---- generic multi (HOOS/WOMAC) ----
+function renderGenericMulti(c, s){
+  const subs = current==='womac' ? s.subs : s.subs.map(name=>({name, max:null}));
+  c.innerHTML = `<div class="section-title">${s.label}<div class="item-sub">${s.region}</div></div>` +
+    subs.map((sub,i)=>{
+      const name = typeof sub==='string'?sub:sub.name;
+      const max = typeof sub==='string'?'':sub.max;
+      return `<div class="row">
+        <div class="item-name">${name}</div>
+        <div class="grid2" style="width:220px;">
+          <input type="number" id="n_${i}" placeholder="題數" value="${max||''}">
+          <input type="number" id="s_${i}" placeholder="總分">
+        </div>
+      </div>`;
+    }).join('') +
+    `<div class="result-box" id="resultBox" style="margin-top:12px;">輸入後自動計算</div>
+     <div class="item-sub" style="margin-top:8px;">${s.note}</div>`;
+  subs.forEach((_,i)=>{
+    document.getElementById('n_'+i).addEventListener('input', ()=>computeGenericMulti(s, subs.length));
+    document.getElementById('s_'+i).addEventListener('input', ()=>computeGenericMulti(s, subs.length));
+  });
+  computeGenericMulti(s, subs.length);
+}
+function computeGenericMulti(s, count){
+  const box = document.getElementById('resultBox');
+  let html = '', valid = true;
+  for(let i=0;i<count;i++){
+    const n = parseFloat(document.getElementById('n_'+i).value) || 0;
+    const sum = parseFloat(document.getElementById('s_'+i).value) || 0;
+    if(n<=0){ valid=false; continue; }
+    const score = s.formula(sum, n);
+    html += `<div>子量表 ${i+1}：<b>${score.toFixed(1)}</b></div>`;
+  }
+  box.innerHTML = valid ? html : '請完整輸入各子量表的題數與總分';
+}
+
+function summaryText(){
+  const s = SCALES[current];
+  const lines = [`${s.label} 計分摘要 - ${new Date().toLocaleString('zh-TW')}`];
+  lines.push(document.getElementById('resultBox').innerText.replace(/\n+/g,' / '));
+  return lines.join('\n');
+}
+
+renderTabs();
+renderCalc();
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  rtSave(STORE_KEY, summaryText());
+  rtFlash(document.getElementById('savedNote'), '已儲存到本機 ✓');
+  rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  rtCopy(summaryText(), document.getElementById('savedNote'));
+});
+rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+</script>
+</body></html>

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "復健科工具箱 (static)",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", ".", "-p", "3000", "--no-clipboard"],
+      "port": 3000
+    }
+  ]
+}

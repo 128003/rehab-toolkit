@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ottawa Ankle/Knee Rules | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css"></head>
+<body><div class="wrap">
+<a class="back" href="index.html">← 回工具箱首頁</a>
+<h1>🦵 Ottawa Ankle/Knee Rules</h1>
+<div class="sub">急性踝/膝關節外傷 X 光決策樹，用於判斷是否需要照 X 光排除骨折</div>
+<div class="disclaimer">⚠️ 僅供臨床決策輔助參考，不可取代醫師完整理學檢查與臨床判斷。</div>
+
+<div class="card">
+  <div class="section-title">✅ 適用前提（請先確認）</div>
+  <div id="prereqList"></div>
+  <div class="result-box" id="prereqResult" style="margin-top:10px;"></div>
+</div>
+
+<div class="card" id="ruleSection" style="display:none;">
+  <div class="section-title">選擇部位</div>
+  <div class="badge-row">
+    <button class="choice-btn active" id="btnAnkle" onclick="switchRegion('ankle')">踝關節 Ankle</button>
+    <button class="choice-btn" id="btnKnee" onclick="switchRegion('knee')">膝關節 Knee</button>
+  </div>
+</div>
+
+<div class="card" id="ankleCard" style="display:none;">
+  <div class="section-title">Ottawa Ankle Rule</div>
+  <div id="ankleItems"></div>
+</div>
+
+<div class="card" id="kneeCard" style="display:none;">
+  <div class="section-title">Ottawa Knee Rule</div>
+  <div id="kneeItems"></div>
+</div>
+
+<div class="card" id="resultCard" style="display:none;">
+  <div class="section-title">判讀結果</div>
+  <div class="result-box" id="resultBox">請勾選上方項目</div>
+</div>
+
+<div class="toolbar">
+  <button class="action btn-primary" id="saveBtn">儲存到本機</button>
+  <button class="action btn-ghost" id="exportBtn">複製文字摘要</button>
+</div>
+<div class="saved-note" id="savedNote"></div>
+
+<div class="card" style="display:none;" id="historyCard">
+  <div class="section-title">🕓 歷史紀錄</div>
+  <div id="historyList"></div>
+</div>
+<footer>僅供醫療教育用途 · 資料不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script src="common.js"></script>
+<script>
+const STORE_KEY = "ottawa_rules_v2";
+const PREREQS = [
+  {id:"pq1", label:"急性骨骼肌肉外傷（非慢性疼痛、非陳舊性傷害）"},
+  {id:"pq2", label:"成人，年齡 ≥ 18 歲"},
+  {id:"pq3", label:"意識清醒、可配合理學檢查"},
+  {id:"pq4", label:"無明顯分散注意力之其他傷害（如多重外傷、骨折）"},
+  {id:"pq5", label:"非懷孕"},
+];
+let prereqState = {};
+
+function buildPrereq(){
+  const c = document.getElementById('prereqList');
+  c.innerHTML = PREREQS.map(p=>`
+    <div class="checklist-item">
+      <input type="checkbox" id="${p.id}">
+      <label for="${p.id}" style="font-size:13.5px;">${p.label}</label>
+    </div>`).join('');
+  PREREQS.forEach(p=>{
+    document.getElementById(p.id).addEventListener('change', checkPrereq);
+  });
+}
+function checkPrereq(){
+  const allChecked = PREREQS.every(p=> document.getElementById(p.id).checked);
+  const result = document.getElementById('prereqResult');
+  const ruleSection = document.getElementById('ruleSection');
+  if(allChecked){
+    result.innerHTML = '<span class="tag green">符合適用前提，可使用 Ottawa Rules</span>';
+    ruleSection.style.display = 'block';
+    document.getElementById(region==='ankle'?'ankleCard':'kneeCard').style.display = 'block';
+    document.getElementById('resultCard').style.display = 'block';
+  } else {
+    result.innerHTML = '<span class="tag yellow">尚未完全符合適用前提，請先評估是否適用其他臨床判斷流程</span>';
+    ruleSection.style.display = 'none';
+    document.getElementById('ankleCard').style.display = 'none';
+    document.getElementById('kneeCard').style.display = 'none';
+    document.getElementById('resultCard').style.display = 'none';
+  }
+}
+
+const ANKLE_ITEMS = [
+  {id:"a1", label:"外踝（外踝尖端後緣 6 cm 範圍）骨壓痛", sub:"Lateral malleolar zone tenderness"},
+  {id:"a2", label:"內踝（內踝尖端後緣 6 cm 範圍）骨壓痛", sub:"Medial malleolar zone tenderness"},
+  {id:"a3", label:"第五蹠骨基部骨壓痛", sub:"5th metatarsal base tenderness（中足規則）"},
+  {id:"a4", label:"舟狀骨骨壓痛", sub:"Navicular tenderness（中足規則）"},
+  {id:"a5", label:"受傷當下及就診時皆無法承重走 4 步", sub:"Inability to bear weight both immediately and in ED"},
+];
+const KNEE_ITEMS = [
+  {id:"k1", label:"年齡 ≥ 55 歲", sub:""},
+  {id:"k2", label:"腓骨頭處單獨壓痛", sub:"Isolated tenderness of fibular head"},
+  {id:"k3", label:"髕骨單獨壓痛（無其他骨壓痛）", sub:"Isolated tenderness of patella"},
+  {id:"k4", label:"無法主動屈膝至 90 度", sub:"Inability to flex to 90°"},
+  {id:"k5", label:"受傷當下及就診時皆無法承重走 4 步", sub:"Inability to bear weight both immediately and in ED"},
+];
+let region = 'ankle';
+let checked = {ankle:{}, knee:{}};
+
+function renderItems(items, containerId, region){
+  const c = document.getElementById(containerId);
+  c.innerHTML = items.map(it=>`
+    <div class="row">
+      <div class="item-name">${it.label}${it.sub?`<div class="item-sub">${it.sub}</div>`:''}</div>
+      <div class="badge-row">
+        <button class="choice-btn" data-region="${region}" data-id="${it.id}" data-v="0">否</button>
+        <button class="choice-btn" data-region="${region}" data-id="${it.id}" data-v="1">是</button>
+      </div>
+    </div>`).join('');
+  c.querySelectorAll('button[data-id]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const r = btn.getAttribute('data-region');
+      const id = btn.getAttribute('data-id');
+      checked[r][id] = btn.getAttribute('data-v') === '1';
+      refreshActive();
+      computeResult();
+    });
+  });
+}
+function refreshActive(){
+  document.querySelectorAll('button[data-id]').forEach(btn=>{
+    const r = btn.getAttribute('data-region');
+    const id = btn.getAttribute('data-id');
+    const v = btn.getAttribute('data-v') === '1';
+    const isSet = checked[r][id] !== undefined;
+    btn.classList.toggle('active', isSet && checked[r][id] === v);
+  });
+}
+function switchRegion(r){
+  region = r;
+  document.getElementById('btnAnkle').classList.toggle('active', r==='ankle');
+  document.getElementById('btnKnee').classList.toggle('active', r==='knee');
+  document.getElementById('ankleCard').style.display = r==='ankle' ? 'block':'none';
+  document.getElementById('kneeCard').style.display = r==='knee' ? 'block':'none';
+  computeResult();
+}
+function computeResult(){
+  const box = document.getElementById('resultBox');
+  if(region === 'ankle'){
+    const c = checked.ankle;
+    if(Object.keys(c).length===0){ box.innerHTML = '請勾選上方項目'; return; }
+    const needXray = c.a1 || c.a2 || c.a3 || c.a4 || c.a5;
+    box.innerHTML = needXray
+      ? `<span class="tag red">建議照 X 光</span><div style="margin-top:8px;">符合 Ottawa Ankle Rule 陽性條件，建議安排踝關節或足部 X 光。</div>`
+      : `<span class="tag green">不建議常規 X 光</span><div style="margin-top:8px;">未符合任何陽性條件，依 Ottawa Ankle Rule 可考慮不需常規 X 光。</div>`;
+  } else {
+    const c = checked.knee;
+    if(Object.keys(c).length===0){ box.innerHTML = '請勾選上方項目'; return; }
+    const needXray = c.k1 || c.k2 || c.k3 || c.k4 || c.k5;
+    box.innerHTML = needXray
+      ? `<span class="tag red">建議照 X 光</span><div style="margin-top:8px;">符合 Ottawa Knee Rule 任一陽性條件，建議安排膝關節 X 光。</div>`
+      : `<span class="tag green">不建議常規 X 光</span><div style="margin-top:8px;">未符合任何陽性條件，依 Ottawa Knee Rule 可考慮不需常規 X 光。</div>`;
+  }
+}
+function summaryText(){
+  const lines = [`Ottawa ${region==='ankle'?'Ankle':'Knee'} Rule 評估摘要 - ${new Date().toLocaleString('zh-TW')}`];
+  lines.push(`適用前提：${PREREQS.every(p=>document.getElementById(p.id).checked) ? '皆符合' : '未完全符合'}`);
+  const items = region==='ankle' ? ANKLE_ITEMS : KNEE_ITEMS;
+  const c = checked[region];
+  items.forEach(it=>{
+    const v = c[it.id];
+    lines.push(`${it.label}：${v===undefined?'未評估':(v?'是':'否')}`);
+  });
+  lines.push('');
+  lines.push(document.getElementById('resultBox').innerText);
+  return lines.join('\n');
+}
+
+buildPrereq();
+renderItems(ANKLE_ITEMS, 'ankleItems', 'ankle');
+renderItems(KNEE_ITEMS, 'kneeItems', 'knee');
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  rtSave(STORE_KEY, summaryText());
+  rtFlash(document.getElementById('savedNote'), '已儲存到本機 ✓');
+  rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  rtCopy(summaryText(), document.getElementById('savedNote'));
+});
+rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+</script>
+</body></html>

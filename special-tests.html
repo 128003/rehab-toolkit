@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>骨科特殊測試庫 | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .test-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+  .test-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .test-name{font-weight:700;font-size:14.5px;}
+  .test-desc{color:var(--sub);font-size:12.5px;margin-top:4px;line-height:1.6;}
+  .pn-group{display:flex;gap:6px;flex-shrink:0;}
+  .pn-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;}
+  .pn-btn.pos.active{background:#fde8e8;border-color:var(--bad);color:var(--bad);}
+  .pn-btn.neg.active{background:#e8f7ec;border-color:var(--good);color:var(--good);}
+  .pn-btn.na.active{background:#eef0f3;border-color:var(--sub);color:var(--sub);}
+  .stat-row{margin-top:8px;}
+</style>
+</head>
+<body><div class="wrap">
+<a class="back" href="index.html">← 回工具箱首頁</a>
+<h1>🔍 骨科特殊測試查詢庫</h1>
+<div class="sub">依部位查詢理學特殊測試，點選 陽性/陰性/未測 後可一鍵產生病歷摘要文字</div>
+<div class="disclaimer">⚠️ Sn/Sp 數值因研究方法不同差異頗大，僅供臨床參考，單一測試結果不應作為唯一診斷依據。</div>
+
+<div class="card">
+  <input type="text" id="searchBox" placeholder="搜尋測試名稱、目標病灶...">
+</div>
+
+<div class="region-tabs" id="regionTabs"></div>
+<div id="resultsArea"></div>
+
+<div class="card" style="margin-top:18px;">
+  <div class="section-title">📝 整體備註</div>
+  <textarea id="notes" placeholder="患側、病史、其他發現..."></textarea>
+</div>
+
+<div class="toolbar">
+  <button class="action btn-primary" id="saveBtn">儲存本次檢查</button>
+  <button class="action btn-ghost" id="exportBtn">複製文字摘要（已勾選項目）</button>
+  <button class="action btn-ghost" id="clearBtn">清除所有勾選</button>
+</div>
+<div class="saved-note" id="savedNote"></div>
+
+<div class="card" style="display:none;" id="historyCard">
+  <div class="section-title">🕓 歷史紀錄</div>
+  <div id="historyList"></div>
+</div>
+<footer>僅供醫療教育用途 · 資料不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script src="common.js"></script>
+<script>
+const STORE_KEY = "special_tests_v2";
+const TESTS = [
+  {region:"肩", name:"Neer Test", desc:"被動將手臂內轉前屈至最大角度，誘發肩峰下夾擠疼痛", target:"肩峰下夾擠症候群", sn:"75-89%", sp:"31-51%"},
+  {region:"肩", name:"Hawkins-Kennedy Test", desc:"肩屈曲90度、肘屈曲90度，內轉肩關節誘發夾擠疼痛", target:"肩峰下夾擠症候群", sn:"79-92%", sp:"25-44%"},
+  {region:"肩", name:"Empty Can Test (Jobe)", desc:"肩外展90度、水平內收30度、拇指朝下，抗阻力測試", target:"棘上肌病變/撕裂", sn:"44-90%", sp:"50-98%"},
+  {region:"肩", name:"O'Brien Test", desc:"肩前屈90度、內收10-15度、內外轉抗阻力比較疼痛", target:"SLAP病灶/AC關節病變", sn:"54-100%", sp:"31-91%"},
+  {region:"肩", name:"Speed's Test", desc:"肩屈曲90度、肘伸直、前臂旋後抗阻力前屈", target:"二頭肌長頭肌腱病變", sn:"32-90%", sp:"14-83%"},
+  {region:"肩", name:"Apprehension Test", desc:"肩外展90度、外轉至最大角度誘發恐懼感", target:"前向肩關節不穩", sn:"32-72%", sp:"57-99%"},
+  {region:"肩", name:"Sulcus Sign", desc:"向下牽引肱骨，觀察肩峰下凹陷", target:"下向/多方向肩關節不穩", sn:"28-72%", sp:"56-93%"},
+  {region:"肘・腕", name:"Cozen's Test", desc:"肘伸直、前臂旋前，抗阻力伸腕誘發外上髁疼痛", target:"網球肘", sn:"中高", sp:"中等"},
+  {region:"肘・腕", name:"Mill's Test", desc:"被動腕屈曲、前臂旋前、肘伸直誘發外上髁疼痛", target:"網球肘", sn:"中等", sp:"中等"},
+  {region:"肘・腕", name:"Tinel's Sign (Wrist)", desc:"輕敲腕部正中神經處誘發手指麻刺感", target:"腕隧道症候群", sn:"23-67%", sp:"40-94%"},
+  {region:"肘・腕", name:"Phalen's Test", desc:"雙腕屈曲90度互靠60秒誘發手指麻刺感", target:"腕隧道症候群", sn:"42-85%", sp:"54-98%"},
+  {region:"肘・腕", name:"Finkelstein Test", desc:"拇指握於掌心、腕部尺偏誘發橈側疼痛", target:"De Quervain's", sn:"中高", sp:"中等"},
+  {region:"脊椎", name:"Straight Leg Raise", desc:"平躺被動抬高下肢至誘發坐骨神經放射痛", target:"腰椎椎間盤突出合併神經根壓迫", sn:"91%", sp:"26%"},
+  {region:"脊椎", name:"Slump Test", desc:"坐姿駝背、頸屈曲、伸膝、踝背屈誘發神經張力症狀", target:"神經根張力增加/椎間盤病變", sn:"84-100%", sp:"低-中"},
+  {region:"脊椎", name:"Spurling's Test", desc:"頸後仰並側彎向下加壓誘發同側上肢放射痛", target:"頸椎神經根病變", sn:"40-97%", sp:"60-100%"},
+  {region:"髖", name:"FABER Test", desc:"髖屈曲外展外轉成4字形誘發鼠蹊或薦髂關節疼痛", target:"髖關節病變/薦髂關節功能障礙", sn:"42-89%", sp:"18-100%"},
+  {region:"髖", name:"FADIR Test", desc:"髖屈曲內收內轉誘發鼠蹊深處疼痛", target:"髖關節夾擠（FAI）/盂唇病變", sn:"75-99%", sp:"8-43%"},
+  {region:"髖", name:"Trendelenburg Test", desc:"單腳站立觀察對側骨盆是否下垂", target:"臀中肌無力/功能障礙", sn:"中等", sp:"中等"},
+  {region:"膝", name:"Lachman Test", desc:"膝屈曲20-30度，拉動脛骨向前比較位移與終末感", target:"前十字韌帶斷裂", sn:"85-99%", sp:"85-99%"},
+  {region:"膝", name:"Anterior Drawer Test", desc:"膝屈曲90度向前拉動脛骨", target:"前十字韌帶斷裂", sn:"22-92%", sp:"71-100%"},
+  {region:"膝", name:"Posterior Drawer Test", desc:"膝屈曲90度向後推脛骨", target:"後十字韌帶斷裂", sn:"22-98%", sp:"97-100%"},
+  {region:"膝", name:"McMurray Test", desc:"膝屈曲後旋轉脛骨同時伸直，誘發喀聲或疼痛", target:"半月板撕裂", sn:"55-70%", sp:"59-97%"},
+  {region:"膝", name:"Thessaly Test", desc:"單腳站立屈膝20度，旋轉身體3次誘發疼痛或卡住感", target:"半月板撕裂", sn:"66-92%", sp:"56-96%"},
+  {region:"膝", name:"Valgus Stress Test", desc:"膝屈曲20-30度施加外翻應力", target:"內側副韌帶損傷", sn:"86-96%", sp:"49%"},
+  {region:"膝", name:"Varus Stress Test", desc:"膝屈曲20-30度施加內翻應力", target:"外側副韌帶損傷", sn:"中等", sp:"中等"},
+  {region:"踝・足", name:"Anterior Drawer Test (Ankle)", desc:"固定脛骨向前拉動跟骨/距骨", target:"距腓前韌帶損傷", sn:"58-96%", sp:"55-100%"},
+  {region:"踝・足", name:"Talar Tilt Test", desc:"踝關節中立位施加內翻應力觀察距骨傾斜", target:"距腓前韌帶/跟腓韌帶損傷", sn:"中等", sp:"中等"},
+  {region:"踝・足", name:"Squeeze Test", desc:"於小腿中段擠壓脛腓骨誘發遠端疼痛", target:"高位踝關節扭傷", sn:"中低", sp:"中高"},
+];
+const REGIONS = ["全部", ...Array.from(new Set(TESTS.map(t=>t.region)))];
+let currentRegion = "全部";
+let currentFilter = "";
+let pnState = {}; // name -> 'pos'|'neg'|'na'
+
+function renderTabs(){
+  const c = document.getElementById('regionTabs');
+  c.innerHTML = REGIONS.map(r=>`<button class="region-tab ${r===currentRegion?'active':''}" data-r="${r}">${r}</button>`).join('');
+  c.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{ currentRegion = b.getAttribute('data-r'); renderTabs(); renderList(); });
+  });
+}
+
+function renderList(){
+  const f = currentFilter.trim().toLowerCase();
+  const filtered = TESTS.filter(t=>{
+    const regionMatch = currentRegion === "全部" || t.region === currentRegion;
+    const textMatch = !f || t.name.toLowerCase().includes(f) || t.target.toLowerCase().includes(f) || t.region.toLowerCase().includes(f);
+    return regionMatch && textMatch;
+  });
+  const area = document.getElementById('resultsArea');
+  if(filtered.length === 0){ area.innerHTML = '<div class="card sub">查無符合結果</div>'; return; }
+  area.innerHTML = filtered.map(t=>{
+    const state = pnState[t.name] || null;
+    return `
+    <div class="test-card">
+      <div class="test-head">
+        <div>
+          <div class="test-name">${t.name} <span class="pill">${t.region}</span></div>
+          <div class="test-desc">${t.desc}</div>
+          <div class="stat-row"><span class="pill">目標：${t.target}</span><span class="pill">Sn ${t.sn}</span><span class="pill">Sp ${t.sp}</span></div>
+        </div>
+        <div class="pn-group" data-name="${t.name}">
+          <button class="pn-btn pos ${state==='pos'?'active':''}" data-v="pos">陽性</button>
+          <button class="pn-btn neg ${state==='neg'?'active':''}" data-v="neg">陰性</button>
+          <button class="pn-btn na ${state==='na'?'active':''}" data-v="na">未測</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  area.querySelectorAll('.pn-group').forEach(group=>{
+    const name = group.getAttribute('data-name');
+    group.querySelectorAll('.pn-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const v = btn.getAttribute('data-v');
+        pnState[name] = (pnState[name] === v) ? null : v;
+        renderList();
+      });
+    });
+  });
+}
+
+document.getElementById('searchBox').addEventListener('input', e=>{ currentFilter = e.target.value; renderList(); });
+
+function summaryText(){
+  const lines = [`骨科特殊測試檢查摘要 - ${new Date().toLocaleString('zh-TW')}`];
+  const labelMap = {pos:'(+) 陽性', neg:'(–) 陰性', na:'未測'};
+  const tested = TESTS.filter(t=> pnState[t.name]);
+  if(tested.length === 0){ lines.push('（尚未勾選任何測試）'); }
+  tested.forEach(t=>{
+    lines.push(`${t.name}（${t.target}）：${labelMap[pnState[t.name]]}`);
+  });
+  const notes = document.getElementById('notes').value.trim();
+  if(notes) lines.push(`\n備註：${notes}`);
+  return lines.join('\n');
+}
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  rtSave(STORE_KEY, summaryText());
+  rtFlash(document.getElementById('savedNote'), '已儲存到本機 ✓');
+  rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  rtCopy(summaryText(), document.getElementById('savedNote'));
+});
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  pnState = {}; document.getElementById('notes').value=''; renderList();
+});
+
+renderTabs();
+renderList();
+rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+</script>
+</body></html>

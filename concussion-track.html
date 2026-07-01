@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>腦震盪評估追蹤 | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css"></head>
+<body><div class="wrap">
+<a class="back" href="index.html">← 回工具箱首頁</a>
+<h1>🧠 腦震盪評估追蹤（簡化版）</h1>
+<div class="sub">症狀量表 + 簡易平衡/認知篩檢紀錄，概念參照 SCAT-5 架構</div>
+<div class="disclaimer">⚠️ 本工具為自製簡化評估，<b>非官方 SCAT-5 之逐字重製版本</b>（官方 SCAT-5 為 Concussion in Sport Group 版權所有，正式場域請使用官方授權版本）。本工具僅作症狀嚴重度與簡易平衡測試的趨勢記錄，不可用於運動場邊立即停賽判斷之唯一依據。如疑似腦震盪請立即移出場並由專業人員評估。</div>
+
+<div class="card">
+  <div class="section-title">症狀量表（0=無，6=最嚴重）</div>
+  <div id="symptomList"></div>
+  <div class="result-box" style="margin-top:10px;" id="symptomResult"></div>
+</div>
+
+<div class="card">
+  <div class="section-title">簡易平衡測試（mBESS 概念，記錄錯誤次數）</div>
+  <div class="grid2">
+    <div><div class="item-sub">雙腳並立（firm surface）錯誤數</div><input type="number" id="bess1" min="0"></div>
+    <div><div class="item-sub">單腳站立（非慣用腳）錯誤數</div><input type="number" id="bess2" min="0"></div>
+    <div><div class="item-sub">前後腳站立（tandem）錯誤數</div><input type="number" id="bess3" min="0"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">📝 其他紀錄</div>
+  <textarea id="notes" placeholder="受傷機轉、意識喪失時間、定向感、近期病史..."></textarea>
+</div>
+
+<div class="toolbar">
+  <button class="action btn-primary" id="saveBtn">儲存本次評估</button>
+  <button class="action btn-ghost" id="exportBtn">複製文字摘要</button>
+</div>
+<div class="saved-note" id="savedNote"></div>
+
+<div class="card" style="display:none;" id="historyCard">
+  <div class="section-title">🕓 歷史紀錄（可追蹤恢復趨勢）</div>
+  <div id="historyList"></div>
+</div>
+<footer>僅供醫療教育用途 · 資料不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script src="common.js"></script>
+<script>
+const STORE_KEY = "concussion_track_v1";
+const SYMPTOMS = ["頭痛","頭暈","噁心/嘔吐","視力模糊","畏光","畏聲","平衡感異常","感覺遲鈍/麻木","疲勞/活力下降","注意力不集中","記憶力下降","反應變慢","情緒易怒","焦慮/緊張","情緒低落","睡眠困難/嗜睡"];
+
+function buildSymptoms(){
+  const c = document.getElementById('symptomList');
+  c.innerHTML = SYMPTOMS.map((s,i)=>`
+    <div class="row">
+      <div class="item-name">${s}</div>
+      <div class="scores" data-i="${i}">${[0,1,2,3,4,5,6].map(v=>`<button class="scbtn" data-v="${v}">${v}</button>`).join('')}</div>
+    </div>`).join('');
+  c.querySelectorAll('.scores').forEach(group=>{
+    group.querySelectorAll('.scbtn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        group.querySelectorAll('.scbtn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        computeSymptom();
+      });
+    });
+  });
+}
+
+function computeSymptom(){
+  let total = 0, count = 0;
+  document.querySelectorAll('.scores').forEach(group=>{
+    const active = group.querySelector('.scbtn.active');
+    if(active){ total += parseInt(active.getAttribute('data-v')); count++; }
+  });
+  document.getElementById('symptomResult').innerHTML =
+    `<div class="result-num">${total}</div><div>症狀總嚴重度分數（已勾選 ${count}/${SYMPTOMS.length} 項，分數越高越嚴重）</div>`;
+}
+
+function summaryText(){
+  const lines = [`腦震盪評估摘要 - ${new Date().toLocaleString('zh-TW')}`];
+  document.querySelectorAll('.scores').forEach(group=>{
+    const i = group.getAttribute('data-i');
+    const active = group.querySelector('.scbtn.active');
+    if(active) lines.push(`${SYMPTOMS[i]}：${active.getAttribute('data-v')}`);
+  });
+  lines.push(document.getElementById('symptomResult').innerText.replace('\n',' / '));
+  const b1 = document.getElementById('bess1').value, b2 = document.getElementById('bess2').value, b3 = document.getElementById('bess3').value;
+  lines.push(`\n平衡測試錯誤數：並立 ${b1||'-'} / 單腳 ${b2||'-'} / 前後腳 ${b3||'-'}`);
+  const notes = document.getElementById('notes').value.trim();
+  if(notes) lines.push(`\n備註：${notes}`);
+  return lines.join('\n');
+}
+
+buildSymptoms();
+computeSymptom();
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  rtSave(STORE_KEY, summaryText());
+  rtFlash(document.getElementById('savedNote'), '已儲存到本機 ✓');
+  rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  rtCopy(summaryText(), document.getElementById('savedNote'));
+});
+rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+</script>
+</body></html>

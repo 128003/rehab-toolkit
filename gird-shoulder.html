@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIRD 肩旋轉缺損計算 | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css"></head>
+<body><div class="wrap">
+<a class="back" href="index.html">← 回工具箱首頁</a>
+<h1>🏐 GIRD 投擲肩旋轉缺損計算</h1>
+<div class="sub">Glenohumeral Internal Rotation Deficit · 比較雙側內外轉角度，常用於投擲型運動員肩關節評估</div>
+<div class="disclaimer">⚠️ 測量需於肩胛骨固定（scapular stabilization）下進行，避免肩胛代償造成誤差。本工具僅做角度換算與分類，不可取代完整理學檢查。</div>
+
+<div class="card">
+  <div class="section-title">輸入角度（度）</div>
+  <div class="grid2">
+    <div><div class="item-sub">慣用側／患側 內轉 IR</div><input type="number" id="domIR"></div>
+    <div><div class="item-sub">非慣用側／健側 內轉 IR</div><input type="number" id="nondomIR"></div>
+    <div><div class="item-sub">慣用側／患側 外轉 ER</div><input type="number" id="domER"></div>
+    <div><div class="item-sub">非慣用側／健側 外轉 ER</div><input type="number" id="nondomER"></div>
+  </div>
+  <div class="result-box" id="resultBox" style="margin-top:14px;"></div>
+</div>
+
+<div class="card">
+  <div class="section-title">📝 備註</div>
+  <textarea id="notes" placeholder="運動項目、投擲手、症狀..."></textarea>
+</div>
+
+<div class="toolbar">
+  <button class="action btn-primary" id="saveBtn">儲存結果</button>
+  <button class="action btn-ghost" id="exportBtn">複製文字摘要</button>
+</div>
+<div class="saved-note" id="savedNote"></div>
+<div class="card" style="display:none;" id="historyCard">
+  <div class="section-title">🕓 歷史紀錄</div>
+  <div id="historyList"></div>
+</div>
+<footer>僅供醫療教育用途 · 資料不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script src="common.js"></script>
+<script>
+const STORE_KEY = "gird_score_v1";
+function compute(){
+  const dIR = parseFloat(document.getElementById('domIR').value);
+  const nIR = parseFloat(document.getElementById('nondomIR').value);
+  const dER = parseFloat(document.getElementById('domER').value);
+  const nER = parseFloat(document.getElementById('nondomER').value);
+  const box = document.getElementById('resultBox');
+  if([dIR,nIR,dER,nER].some(v=>isNaN(v))){ box.innerHTML='請完整輸入四個角度'; return; }
+  const gird = nIR - dIR;
+  const erGain = dER - nER;
+  const dTROM = dIR + dER;
+  const nTROM = nIR + nER;
+  const trromDiff = nTROM - dTROM;
+  let html = `<div>GIRD（健側IR − 患側IR）：<b>${gird}°</b> ${gird>=20?'<span class="tag red">≥20° 臨床顯著</span>':(gird>0?'<span class="tag yellow">有缺損</span>':'<span class="tag green">無顯著缺損</span>')}</div>`;
+  html += `<div style="margin-top:6px;">ER gain（患側ER − 健側ER）：<b>${erGain}°</b></div>`;
+  html += `<div style="margin-top:6px;">TROM 差異（健側TROM − 患側TROM）：<b>${trromDiff}°</b> ${Math.abs(trromDiff)>=5?'<span class="tag red">≥5° 提示總旋轉動作受限（非單純骨性適應）</span>':'<span class="tag green">在代償範圍內</span>'}</div>`;
+  box.innerHTML = html;
+}
+['domIR','nondomIR','domER','nondomER'].forEach(id=>document.getElementById(id).addEventListener('input', compute));
+
+function summaryText(){
+  const notes = document.getElementById('notes').value.trim();
+  return `GIRD 評估摘要 - ${new Date().toLocaleString('zh-TW')}\n` +
+    `患側 IR/ER：${document.getElementById('domIR').value||'-'}°/${document.getElementById('domER').value||'-'}°\n` +
+    `健側 IR/ER：${document.getElementById('nondomIR').value||'-'}°/${document.getElementById('nondomER').value||'-'}°\n` +
+    document.getElementById('resultBox').innerText + (notes?`\n備註：${notes}`:'');
+}
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  rtSave(STORE_KEY, summaryText());
+  rtFlash(document.getElementById('savedNote'), '已儲存到本機 ✓');
+  rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  rtCopy(summaryText(), document.getElementById('savedNote'));
+});
+rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+</script>
+</body></html>

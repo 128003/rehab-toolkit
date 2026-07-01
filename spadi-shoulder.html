@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPADI 肩痛與失能指數 | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css"></head>
+<body><div class="wrap">
+<a class="back" href="index.html">← 回工具箱首頁</a>
+<h1>🤕 SPADI 計分器</h1>
+<div class="sub">Shoulder Pain and Disability Index · 5 題疼痛 + 8 題失能，各題 0–10 分</div>
+<div class="disclaimer">⚠️ 請依官方量表本逐題詢問病人（每題 0=無症狀，10=最嚴重/完全無法執行），再將各題分數輸入下方計算。</div>
+
+<div class="card">
+  <div class="section-title">疼痛分量表（5 題，各 0–10）</div>
+  <div id="painList"></div>
+</div>
+<div class="card">
+  <div class="section-title">失能分量表（8 題，各 0–10）</div>
+  <div id="disList"></div>
+</div>
+<div class="card">
+  <div class="result-box" id="resultBox"></div>
+</div>
+
+<div class="card">
+  <div class="section-title">📝 備註</div>
+  <textarea id="notes" placeholder="患側、症狀病程..."></textarea>
+</div>
+
+<div class="toolbar">
+  <button class="action btn-primary" id="saveBtn">儲存結果</button>
+  <button class="action btn-ghost" id="exportBtn">複製文字摘要</button>
+</div>
+<div class="saved-note" id="savedNote"></div>
+<div class="card" style="display:none;" id="historyCard">
+  <div class="section-title">🕓 歷史紀錄</div>
+  <div id="historyList"></div>
+</div>
+<footer>僅供醫療教育用途 · 資料不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script src="common.js"></script>
+<script>
+const STORE_KEY = "spadi_score_v1";
+function buildInputs(containerId, n, prefix){
+  const c = document.getElementById(containerId);
+  let html = '';
+  for(let i=1;i<=n;i++){
+    html += `<div class="row"><div class="item-name">第 ${i} 題</div><input type="number" min="0" max="10" id="${prefix}${i}" style="width:80px;" oninput="compute()"></div>`;
+  }
+  c.innerHTML = html;
+}
+function compute(){
+  let painSum = 0, painCount = 0, disSum = 0, disCount = 0;
+  for(let i=1;i<=5;i++){
+    const v = parseFloat(document.getElementById('p'+i).value);
+    if(!isNaN(v)){ painSum += v; painCount++; }
+  }
+  for(let i=1;i<=8;i++){
+    const v = parseFloat(document.getElementById('d'+i).value);
+    if(!isNaN(v)){ disSum += v; disCount++; }
+  }
+  const box = document.getElementById('resultBox');
+  if(painCount===0 && disCount===0){ box.innerHTML='請輸入分數'; return; }
+  const painScore = painCount>0 ? (painSum/(painCount*10))*100 : null;
+  const disScore = disCount>0 ? (disSum/(disCount*10))*100 : null;
+  const total = (painCount>0 && disCount>0) ? ((painSum+disSum)/((painCount+disCount)*10))*100 : null;
+  box.innerHTML = `
+    <div>疼痛分量表：<b>${painScore!==null?painScore.toFixed(1):'-'}</b> / 100（已填 ${painCount}/5 題）</div>
+    <div style="margin-top:4px;">失能分量表：<b>${disScore!==null?disScore.toFixed(1):'-'}</b> / 100（已填 ${disCount}/8 題）</div>
+    <div style="margin-top:8px;" class="result-num">${total!==null?total.toFixed(1):'-'}</div>
+    <div>SPADI 總分（需 13 題皆填答才完整），分數越高代表疼痛/失能越嚴重</div>
+  `;
+}
+buildInputs('painList', 5, 'p');
+buildInputs('disList', 8, 'd');
+
+function summaryText(){
+  const notes = document.getElementById('notes').value.trim();
+  return `SPADI 評估摘要 - ${new Date().toLocaleString('zh-TW')}\n` + document.getElementById('resultBox').innerText + (notes?`\n備註：${notes}`:'');
+}
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  rtSave(STORE_KEY, summaryText());
+  rtFlash(document.getElementById('savedNote'), '已儲存到本機 ✓');
+  rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  rtCopy(summaryText(), document.getElementById('savedNote'));
+});
+rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+</script>
+</body></html>

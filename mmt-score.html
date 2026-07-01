@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MMT 肌力評分板 | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css"></head>
+<body><div class="wrap">
+<a class="back" href="index.html">← 回工具箱首頁</a>
+<h1>💪 MMT 徒手肌力測試評分板</h1>
+<div class="sub">MRC 0–5 分級 · 上下肢主要肌群 + 神經根對照 · 資料僅存於本機瀏覽器</div>
+<div class="disclaimer">⚠️ 本工具僅供醫療教育與臨床輔助參考，不可取代專業臨床判斷。請勿輸入可識別病人身分之真實資料。</div>
+
+<div class="card">
+  <div class="badge-row" style="margin-bottom:8px;">
+    <span class="pill">0 無收縮</span><span class="pill">1 微弱收縮</span><span class="pill">2 去重力可動</span>
+    <span class="pill">3 抗重力可動</span><span class="pill">4 抗中度阻力</span><span class="pill">5 正常肌力</span>
+  </div>
+  <div class="badge-row" id="sideToggle">
+    <button class="choice-btn active" data-side="R">右側 R</button>
+    <button class="choice-btn" data-side="L">左側 L</button>
+  </div>
+</div>
+
+<div id="content"></div>
+
+<div class="card">
+  <div class="section-title">📝 備註</div>
+  <textarea id="notes" placeholder="病人配合度、檢查日期、特殊發現..."></textarea>
+</div>
+
+<div class="toolbar">
+  <button class="action btn-primary" id="saveBtn">儲存本次評估</button>
+  <button class="action btn-ghost" id="exportBtn">複製文字摘要</button>
+  <button class="action btn-ghost" id="clearBtn">清除目前輸入</button>
+</div>
+<div class="saved-note" id="savedNote"></div>
+
+<div class="card" style="display:none;" id="historyCard">
+  <div class="section-title">🕓 歷史紀錄</div>
+  <div id="historyList"></div>
+</div>
+<footer>僅供醫療教育用途 · 資料不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script src="common.js"></script>
+<script>
+const MUSCLES = {
+  "上肢": [
+    {name:"三角肌（肩外展）", root:"C5"},
+    {name:"二頭肌（肘屈曲）", root:"C5-C6"},
+    {name:"伸腕肌群（橈側伸腕肌）", root:"C6"},
+    {name:"三頭肌（肘伸直）", root:"C7"},
+    {name:"屈指肌群", root:"C8"},
+    {name:"小指外展肌（第一背側骨間肌）", root:"T1"},
+  ],
+  "下肢": [
+    {name:"髂腰肌（髖屈曲）", root:"L2-L3"},
+    {name:"股四頭肌（膝伸直）", root:"L3-L4"},
+    {name:"脛前肌（踝背屈）", root:"L4-L5"},
+    {name:"伸拇長肌（拇趾背屈）", root:"L5"},
+    {name:"腓骨長短肌（踝外翻）", root:"L5-S1"},
+    {name:"腓腸肌/比目魚肌（踝蹠屈）", root:"S1-S2"},
+  ]
+};
+const STORE_KEY = "mmt_score_records_v1";
+let currentSide = "R";
+let scores = { R:{}, L:{} };
+
+function buildUI(){
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+  Object.entries(MUSCLES).forEach(([group, list])=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<div class="section-title">${group}</div>`;
+    list.forEach(m=>{
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `
+        <div class="item-name">${m.name}<div class="item-sub">神經根：${m.root}</div></div>
+        <div class="scores" data-muscle="${m.name}">${[0,1,2,3,4,5].map(v=>`<button class="scbtn" data-v="${v}">${v}</button>`).join('')}</div>
+      `;
+      card.appendChild(row);
+    });
+    content.appendChild(card);
+  });
+  attachScoreEvents();
+  refreshActiveStates();
+}
+function attachScoreEvents(){
+  document.querySelectorAll('.scores').forEach(group=>{
+    group.querySelectorAll('.scbtn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const muscle = group.getAttribute('data-muscle');
+        scores[currentSide][muscle] = btn.getAttribute('data-v');
+        refreshActiveStates();
+      });
+    });
+  });
+}
+function refreshActiveStates(){
+  document.querySelectorAll('.scores').forEach(group=>{
+    const muscle = group.getAttribute('data-muscle');
+    const val = scores[currentSide][muscle];
+    group.querySelectorAll('.scbtn').forEach(b=> b.classList.toggle('active', b.getAttribute('data-v') === val));
+  });
+}
+document.getElementById('sideToggle').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-side]');
+  if(!btn) return;
+  currentSide = btn.getAttribute('data-side');
+  document.querySelectorAll('#sideToggle button').forEach(b=>b.classList.toggle('active', b===btn));
+  refreshActiveStates();
+});
+function summaryText(){
+  const lines = [`MMT 肌力評分摘要 - ${new Date().toLocaleString('zh-TW')}`];
+  ['R','L'].forEach(side=>{
+    lines.push(`\n【${side==='R'?'右側':'左側'}】`);
+    Object.entries(MUSCLES).forEach(([group, list])=>{
+      list.forEach(m=>{
+        const v = scores[side][m.name];
+        if(v !== undefined) lines.push(`${m.name}（${m.root}）：${v}/5`);
+      });
+    });
+  });
+  const notes = document.getElementById('notes').value.trim();
+  if(notes) lines.push(`\n備註：${notes}`);
+  return lines.join('\n');
+}
+buildUI();
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  rtSave(STORE_KEY, summaryText());
+  rtFlash(document.getElementById('savedNote'), '已儲存到本機 ✓');
+  rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  rtCopy(summaryText(), document.getElementById('savedNote'));
+});
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  scores = { R:{}, L:{} }; document.getElementById('notes').value=''; refreshActiveStates();
+});
+rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+</script>
+</body></html>

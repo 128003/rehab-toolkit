@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VISA-A 阿基里斯肌腱病 | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css"></head>
+<body><div class="wrap">
+<a class="back" href="index.html">← 回工具箱首頁</a>
+<h1>🦵 VISA-A 計分器</h1>
+<div class="sub">Victorian Institute of Sport Assessment-Achilles · 8 題，總分 0–100</div>
+<div class="disclaimer">⚠️ 請依官方量表本逐題詢問（前7題各0–10分，第8題依運動參與程度0/4/7/10分），加總後輸入下方計算。</div>
+
+<div class="card">
+  <div class="section-title">輸入各題分數</div>
+  <div id="itemList"></div>
+  <div class="result-box" id="resultBox" style="margin-top:12px;"></div>
+</div>
+
+<div class="card">
+  <div class="section-title">📝 備註</div>
+  <textarea id="notes" placeholder="患側、病程、運動項目..."></textarea>
+</div>
+
+<div class="toolbar">
+  <button class="action btn-primary" id="saveBtn">儲存結果</button>
+  <button class="action btn-ghost" id="exportBtn">複製文字摘要</button>
+</div>
+<div class="saved-note" id="savedNote"></div>
+<div class="card" style="display:none;" id="historyCard">
+  <div class="section-title">🕓 歷史紀錄</div>
+  <div id="historyList"></div>
+</div>
+<footer>僅供醫療教育用途 · 資料不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script src="common.js"></script>
+<script>
+const STORE_KEY = "visa_a_score_v1";
+const LABELS = [
+  "晨間僵硬程度（0–10）","晨間伸展疼痛程度（0–10）","30分鐘跑步後疼痛（0–10）",
+  "下樓梯疼痛（0–10）","單腳跳20下疼痛（0–10）","活動相關疼痛影響日常程度（0–10）",
+  "目前訓練/運動所致疼痛程度（0–10）","運動參與程度（0/4/7/10：無運動/受限運動/完整訓練但有調整/完全無症狀競賽）"
+];
+function build(){
+  const c = document.getElementById('itemList');
+  c.innerHTML = LABELS.map((l,i)=>`<div class="row"><div class="item-name">${i+1}. ${l}</div><input type="number" min="0" max="10" id="q${i+1}" style="width:80px;" oninput="compute()"></div>`).join('');
+}
+function compute(){
+  let sum = 0, count = 0;
+  for(let i=1;i<=8;i++){
+    const v = parseFloat(document.getElementById('q'+i).value);
+    if(!isNaN(v)){ sum += v; count++; }
+  }
+  const box = document.getElementById('resultBox');
+  if(count===0){ box.innerHTML='請輸入分數'; return; }
+  box.innerHTML = `<div class="result-num">${sum} / 100</div><div>已填 ${count}/8 題（需全填才完整），分數越高代表功能越好、症狀越輕</div>`;
+}
+build();
+function summaryText(){
+  const notes = document.getElementById('notes').value.trim();
+  return `VISA-A 評估摘要 - ${new Date().toLocaleString('zh-TW')}\n` + document.getElementById('resultBox').innerText + (notes?`\n備註：${notes}`:'');
+}
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  rtSave(STORE_KEY, summaryText());
+  rtFlash(document.getElementById('savedNote'), '已儲存到本機 ✓');
+  rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  rtCopy(summaryText(), document.getElementById('savedNote'));
+});
+rtRenderHistory(STORE_KEY, document.getElementById('historyList'));
+</script>
+</body></html>

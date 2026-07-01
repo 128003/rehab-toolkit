@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>復健科臨床工具箱</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body><div class="wrap">
+
+<div class="hero">
+  <h1>🩺 復健科臨床工具箱</h1>
+  <p class="sub">評估量表 · 決策樹 · 影像報告 · 運動處方 — 資料皆儲存於使用者本機瀏覽器</p>
+</div>
+
+<div class="card">
+  <div class="section-title">🔎 依部位找工具</div>
+  <div class="region-tabs" id="regionTabs"></div>
+  <div id="toolGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;"></div>
+</div>
+
+<div class="block-row">
+  <div class="block-card block-child">
+    <div class="block-title">👶 兒童發展</div>
+    <div class="block-sub">S/O/A 三段式評估工具</div>
+    <a class="tool-card" href="child-development.html">
+      <div class="item-name">兒童發展評估</div>
+      <div class="item-sub">年齡階梯評估＋診斷選單</div>
+    </a>
+  </div>
+  <div class="block-card block-img">
+    <div class="block-title">🖼️ 影像 / 報告產生器</div>
+    <div class="block-sub">外部連結</div>
+    <a class="tool-card" href="https://128003.github.io/Echo-/" target="_blank">
+      <div class="item-name">MSK 超音波報告產生器</div>
+      <div class="item-sub">結構化勾選＋注射紀錄輸出</div>
+    </a>
+  </div>
+  <div class="block-card block-sport">
+    <div class="block-title">🏃 運動處方</div>
+    <div class="block-sub">外部連結</div>
+    <a class="tool-card" href="https://exerciseprescription.sportsmedicine.tw/" target="_blank">
+      <div class="item-name">運動處方推薦系統</div>
+      <div class="item-sub">ACSM FITT-VP 個人化建議</div>
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">📄 官方版權量表（請使用原版）</div>
+  <div class="sub">以下工具因版權限制，無法做成可改作的數位版本，建議直接使用官方 PDF 列印使用。</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;">
+    <a class="tool-card card" style="margin:0;" href="https://bjsm.bmj.com/content/bjsports/early/2017/04/26/bjsports-2017-097506SCAT5.full.pdf" target="_blank"><span class="tag yellow" style="width:fit-content;">外部PDF</span><div class="item-name">SCAT5 官方版（PDF列印）</div><div class="item-sub">Concussion in Sport Group 版權所有</div></a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">📱 病人自填 QR Code</div>
+  <div class="sub">部署上線後，把任一工具網址貼到下方即可產生 QR code 給病人掃描自填。</div>
+  <input type="text" id="urlInput" placeholder="https://你的帳號.github.io/repo名稱/spadi-shoulder.html">
+  <button class="action btn-primary" style="margin-top:10px;" onclick="genQR()">產生 QR Code</button>
+  <div id="qrcode" style="margin-top:12px;"></div>
+</div>
+
+<footer>僅供醫療教育用途 · 各工具資料僅存於使用者本機瀏覽器，不上傳伺服器 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script>
+const TOOLS = [
+  {href:"mmt-score.html", icon:"💪", name:"MMT 肌力評分板", desc:"MRC 0–5 ＋神經根對照", regions:["肩","肘・腕","髖","膝","踝・足"]},
+  {href:"rom-goniometer.html", icon:"📐", name:"ROM 關節活動度", desc:"上下肢多關節雙側追蹤", regions:["肩","肘・腕","髖","膝","踝・足"]},
+  {href:"ottawa-rules.html", icon:"🦵", name:"Ottawa Ankle/Knee Rules", desc:"急性外傷 X 光決策樹", regions:["膝","踝・足"]},
+  {href:"outcome-scales.html", icon:"📊", name:"功能量表計分 7合1", desc:"QuickDASH/KOOS/HOOS/WOMAC/ODI/NDI/LEFS", regions:["肩","肘・腕","脊椎","髖","膝","踝・足"]},
+  {href:"special-tests.html", icon:"🔍", name:"骨科特殊測試查詢庫", desc:"操作方式＋Sn/Sp 參考值＋陽陰性紀錄", regions:["肩","肘・腕","脊椎","髖","膝","踝・足"]},
+  {href:"concussion-track.html", icon:"🧠", name:"腦震盪評估追蹤（簡化版）", desc:"症狀量表＋平衡測試記錄", regions:["頭部"]},
+  {href:"cait-ankle-instability.html", icon:"🦶", name:"CAIT 踝關節不穩", desc:"9題中文評估＋複製病歷摘要", regions:["踝・足"]},
+  {href:"gird-shoulder.html", icon:"🏐", name:"GIRD 肩旋轉缺損", desc:"投擲肩雙側角度比較", regions:["肩"]},
+  {href:"spadi-shoulder.html", icon:"🤕", name:"SPADI 肩痛與失能", desc:"5+8題計分換算", regions:["肩"]},
+  {href:"visa-a-achilles.html", icon:"🦵", name:"VISA-A 阿基里斯肌腱病", desc:"8題總分0–100", regions:["踝・足"]},
+  {href:"osteoporosis-risk.html", icon:"🦴", name:"骨質疏鬆症風險分層與藥物決策", desc:"OSTAi/MOSTAi・FRAX・健保給付比對", regions:["全身・代謝","脊椎","髖"]},
+];
+const REGIONS = ["全部","肩","肘・腕","脊椎","髖","膝","踝・足","頭部","全身・代謝"];
+let currentRegion = "全部";
+
+function renderTabs(){
+  const c = document.getElementById('regionTabs');
+  c.innerHTML = REGIONS.map(r=>`<button class="region-tab ${r===currentRegion?'active':''}" data-r="${r}">${r}</button>`).join('');
+  c.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{ currentRegion = b.getAttribute('data-r'); renderTabs(); renderGrid(); });
+  });
+}
+function renderGrid(){
+  const list = TOOLS.filter(t=> currentRegion==="全部" || t.regions.includes(currentRegion));
+  const grid = document.getElementById('toolGrid');
+  if(list.length===0){ grid.innerHTML='<div class="sub">此部位暫無工具</div>'; return; }
+  grid.innerHTML = list.map(t=>`
+    <a class="tool-card card" style="margin:0;" href="${t.href}">
+      <div style="font-size:22px;">${t.icon}</div>
+      <div class="item-name">${t.name}</div>
+      <div class="item-sub">${t.desc}</div>
+    </a>`).join('');
+}
+function genQR(){
+  const url = document.getElementById('urlInput').value.trim();
+  if(!url) return;
+  document.getElementById('qrcode').innerHTML = '';
+  new QRCode(document.getElementById('qrcode'), {text:url, width:150, height:150});
+}
+renderTabs();
+renderGrid();
+</script>
+</body></html>
