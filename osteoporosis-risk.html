@@ -40,6 +40,9 @@
   .drug-name{font-weight:800;font-size:13.5px;}
   .drug-meta{font-size:11.5px;color:var(--sub);margin-top:2px;}
   .drug-hover-hint{font-size:10.5px;color:var(--accent);margin-top:4px;font-style:italic;user-select:none;}
+  .drug-select-btn{margin-top:6px;font-size:11.5px;font-weight:700;border:1.5px solid var(--accent);background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;color:var(--accent);transition:.15s;}
+  .drug-select-btn:hover{background:var(--accent-light);}
+  .drug-select-btn.selected{background:var(--accent);color:#fff;border-color:var(--accent);}
   .drug-popup{display:none;background:#fffaf9;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:11.5px;line-height:1.7;}
   .drug-card:hover .drug-popup{display:block;}
   .ev-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:6px 0 8px;}
@@ -639,6 +642,14 @@ function drugPopup(key){
   </div>`;
 }
 
+function selectDrug(key){
+  selectedDrugKey=key;
+  document.querySelectorAll('.drug-select-btn').forEach(b=>{
+    b.classList.toggle('selected', b.dataset.key===key);
+    b.textContent = b.dataset.key===key ? '✓ 已選為本次使用藥物' : '選為本次使用藥物';
+  });
+}
+
 /* ── Build drug recommendations ── */
 function buildDrugRecommendations(tierResult){
   const sex=v('i_sex'),nhiAR=nhiAntiresorptive(),nhiT=nhiTPTD(false),nhiR=nhiTPTD(true),tier=tierResult.tier;
@@ -656,7 +667,8 @@ function buildDrugRecommendations(tierResult){
     ['romosozumab','teriparatide','zoledronate','denosumab'].forEach(k=>{
       const d=DRUG_INFO[k];
       html+=`<div class="drug-card"><div class="drug-name">${d.name}</div><div class="drug-meta">${d.cls}・${d.freq}</div>
-        <div class="drug-hover-hint">▸ 滑鼠停留查看詳細資訊（證據力・副作用・禁忌）</div>${drugPopup(k)}</div>`;
+        <div class="drug-hover-hint">▸ 滑鼠停留查看詳細資訊（證據力・副作用・禁忌）</div>${drugPopup(k)}
+        <button class="drug-select-btn no-print" data-key="${k}" onclick="selectDrug('${k}')">選為本次使用藥物</button></div>`;
     });
     html+=`<div class="drug-meta" style="margin-top:4px;">romosozumab 療程至多 1 年、teriparatide 至多 2 年，療程後須接續抗骨質再吸收劑（雙磷酸鹽/denosumab）以防骨密度反彈流失。</div>`;
     lines.push('極高風險 → romosozumab／teriparatide／zoledronate／denosumab 優先');
@@ -665,7 +677,8 @@ function buildDrugRecommendations(tierResult){
     ['alendronate','risedronate','zoledronate','denosumab'].forEach(k=>{
       const d=DRUG_INFO[k];
       html+=`<div class="drug-card"><div class="drug-name">${d.name}</div><div class="drug-meta">${d.cls}・${d.freq}</div>
-        <div class="drug-hover-hint">▸ 滑鼠停留查看詳細資訊（證據力・副作用・禁忌）</div>${drugPopup(k)}</div>`;
+        <div class="drug-hover-hint">▸ 滑鼠停留查看詳細資訊（證據力・副作用・禁忌）</div>${drugPopup(k)}
+        <button class="drug-select-btn no-print" data-key="${k}" onclick="selectDrug('${k}')">選為本次使用藥物</button></div>`;
     });
     lines.push('高風險 → 雙磷酸鹽類或 denosumab 為初始治療首選');
   } else if(tier==='中風險'){
@@ -684,7 +697,8 @@ function buildDrugRecommendations(tierResult){
     ['raloxifene','estrogen','tibolone'].forEach(k=>{
       const d=DRUG_INFO[k];
       html+=`<div class="drug-card"><div class="drug-name">${d.name}</div><div class="drug-meta">${d.cls}・${d.freq}</div>
-        <div class="drug-hover-hint">▸ 滑鼠停留查看詳細資訊（證據力・副作用・禁忌）</div>${drugPopup(k)}</div>`;
+        <div class="drug-hover-hint">▸ 滑鼠停留查看詳細資訊（證據力・副作用・禁忌）</div>${drugPopup(k)}
+        <button class="drug-select-btn no-print" data-key="${k}" onclick="selectDrug('${k}')">選為本次使用藥物</button></div>`;
     });
   }
 
@@ -694,7 +708,8 @@ function buildDrugRecommendations(tierResult){
     ['teriparatide','romosozumab'].forEach(k=>{
       const d=DRUG_INFO[k];
       html+=`<div class="drug-card"><div class="drug-name">${d.name}</div><div class="drug-meta">${d.cls}・${d.freq}</div>
-        <div class="drug-hover-hint">▸ 滑鼠停留查看詳細資訊（證據力・副作用・禁忌）</div>${drugPopup(k)}</div>`;
+        <div class="drug-hover-hint">▸ 滑鼠停留查看詳細資訊（證據力・副作用・禁忌）</div>${drugPopup(k)}
+        <button class="drug-select-btn no-print" data-key="${k}" onclick="selectDrug('${k}')">選為本次使用藥物</button></div>`;
     });
   }
 
@@ -731,6 +746,7 @@ function buildDrugRecommendations(tierResult){
 
 /* ── Compute & render ── */
 let lastResult=null;
+let selectedDrugKey=null;
 document.getElementById('calcBtn').addEventListener('click',()=>{
   document.querySelectorAll('.tier-btn').forEach(b=>b.className='tier-btn');
   const tr=computeTier();
@@ -753,21 +769,32 @@ function openEduSheet(){
   const prot = age&&age>=65?'1.2':'1.0';
   const tier = lastResult?lastResult.tierResult.tier:'—';
 
-  // Collect drug notes for drugs in current recommendation
+  // Drug notes: only the selected drug
   let drugNotes='';
-  if(lastResult){
-    const allDrugs=Object.keys(DRUG_INFO);
-    const drugHtml=document.getElementById('drugOut').innerText||'';
-    const mentioned=allDrugs.filter(k=>drugHtml.includes(DRUG_INFO[k].name.split('（')[0]));
-    if(mentioned.length){
-      drugNotes='<div class="edu-section"><div class="edu-section-title">💊 您的骨鬆藥物注意事項</div><ul class="edu-list">';
-      mentioned.forEach(k=>{
-        const d=DRUG_INFO[k];
-        drugNotes+=`<li><b>${d.name}</b>（${d.freq}）<br>服藥須知：${d.ptnote}</li>`;
-      });
-      drugNotes+='</ul></div>';
-    }
+  if(selectedDrugKey && DRUG_INFO[selectedDrugKey]){
+    const d=DRUG_INFO[selectedDrugKey];
+    drugNotes=`<div class="edu-section"><div class="edu-section-title">💊 您的骨鬆藥物注意事項</div>
+      <div style="background:#fbe9e6;border-radius:8px;padding:8px 12px;margin-bottom:6px;">
+        <div style="font-weight:800;font-size:12pt;">${d.name}</div>
+        <div style="font-size:10.5pt;color:#555;margin-top:2px;">${d.cls}・${d.freq}${d.selfpay?'・自費價：'+d.selfpay:''}</div>
+      </div>
+      <ul class="edu-list"><li><b>服藥須知：</b>${d.ptnote}</li>
+      <li><b>常見副作用：</b>${d.side}</li>
+      <li><b>注意事項：</b>若有任何不適請立即回診，勿自行停藥。</li></ul></div>`;
+  } else if(lastResult){
+    drugNotes='<div class="edu-section"><div class="edu-section-title">💊 骨鬆藥物注意事項</div><div style="color:#888;font-size:11pt;">請在藥物建議區點選「選為本次使用藥物」後重新產生衛教單，即可顯示個別藥物注意事項。</div></div>';
   }
+
+  // Ca/VitD personalized notes
+  const ckd=checked('i_ckd');
+  const caNotes=[];
+  if(sex==='F'&&meno==='post') caNotes.push('停經後婦女骨質流失加速，建議每日鈣質攝取提高至 <b>1200 mg</b>。');
+  else caNotes.push('建議每日鈣質攝取達 <b>1000 mg</b>（含飲食與補充劑合計）。');
+  if(age&&age>=65) caNotes.push('年齡 ≥65 歲者維生素D建議提高至 <b>1000 IU/天</b>，有助於改善肌力與降低跌倒風險。');
+  if(ckd) caNotes.push('⚠️ 慢性腎臟病患者應使用<b>活性維生素D（如 calcitriol）</b>，一般維生素D3效果不足，請遵醫囑使用。');
+  if(checked('i_hypocalcemia')) caNotes.push('⚠️ 目前有低血鈣情形，請先依醫囑補充鈣質與維生素D，待血鈣矯正後再啟動骨鬆藥物治療。');
+  caNotes.push('每次鈣補充劑不超過 <b>500 mg</b>，分次服用吸收較佳；避免與鐵劑同時服用。');
+  caNotes.push('☀️ 每天手臂及臉部日曬 <b>10–15 分鐘</b>（上午10時至下午2時）可幫助皮膚合成維生素D。');
 
   const content=`
     <div style="text-align:center;margin-bottom:16px;">
@@ -778,15 +805,42 @@ function openEduSheet(){
 
     <div class="edu-section">
       <div class="edu-section-title">🥛 鈣質與維生素 D 每日建議</div>
-      <ul class="edu-list">
-        <li>每日鈣質攝取目標：<b>${ca} mg</b>（含飲食＋補充劑），上限 2500 mg</li>
-        <li>每日維生素D目標：<b>${vitD} IU</b>，目標血清 25(OH)D ≥ 30 ng/mL</li>
-        <li>高鈣食物：低脂牛奶（1杯240ml ≈ 300mg）、板豆腐（100g ≈ 150mg）、小魚乾（10g ≈ 220mg）、黑芝麻、深綠蔬菜</li>
-        <li>高維生素D食物：鮭魚（100g ≈ 600–800 IU）、鮪魚、蛋黃、日曬香菇</li>
-        <li>補充劑：每次不超過 500mg 鈣元素，避免與鐵同時服用</li>
-        <li>☀️ 每天手臂及臉部日曬 10–15 分鐘（腎功能不全者使用活性維生素D，請遵醫囑）</li>
-        <li>鈣質＋維生素D需「同時補充」，單獨補充效果有限</li>
+      <div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
+        <div style="background:#fbe9e6;border-radius:8px;padding:8px 16px;text-align:center;min-width:100px;">
+          <div style="font-size:9pt;color:#888;">每日鈣質目標</div>
+          <div style="font-size:17pt;font-weight:800;color:#85210c;">${ca} mg</div>
+        </div>
+        <div style="background:#e8f0fb;border-radius:8px;padding:8px 16px;text-align:center;min-width:100px;">
+          <div style="font-size:9pt;color:#888;">每日維生素D目標</div>
+          <div style="font-size:17pt;font-weight:800;color:#1a5276;">${vitD} IU</div>
+          <div style="font-size:8pt;color:#888;">目標血清 25(OH)D ≥30 ng/mL</div>
+        </div>
+      </div>
+      <ul class="edu-list">${caNotes.map(n=>`<li>${n}</li>`).join('')}
+        <li>鈣質＋維生素D需「同時補充」，單獨補充效果有限。</li>
       </ul>
+      <div style="margin-top:8px;font-size:10pt;font-weight:800;">常見高鈣食物含量參考：</div>
+      <table style="width:100%;border-collapse:collapse;font-size:9.5pt;margin-top:4px;">
+        <thead><tr style="background:#f5ece9;">
+          <th style="border:1px solid #ddd;padding:4px 6px;text-align:left;">食物</th>
+          <th style="border:1px solid #ddd;padding:4px 6px;text-align:left;">份量</th>
+          <th style="border:1px solid #ddd;padding:4px 6px;text-align:right;">鈣質 (mg)</th>
+          <th style="border:1px solid #ddd;padding:4px 6px;text-align:right;">維生素D (IU)</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="border:1px solid #ddd;padding:3px 6px;">低脂牛奶</td><td style="border:1px solid #ddd;padding:3px 6px;">1杯 (240 mL)</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~290</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~120</td></tr>
+          <tr style="background:#fafafa;"><td style="border:1px solid #ddd;padding:3px 6px;">全脂鮮乳</td><td style="border:1px solid #ddd;padding:3px 6px;">1杯 (240 mL)</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~276</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~115</td></tr>
+          <tr><td style="border:1px solid #ddd;padding:3px 6px;">原味優格</td><td style="border:1px solid #ddd;padding:3px 6px;">1杯 (240 g)</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~296</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~80</td></tr>
+          <tr style="background:#fafafa;"><td style="border:1px solid #ddd;padding:3px 6px;">板豆腐（石膏製）</td><td style="border:1px solid #ddd;padding:3px 6px;">100 g</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~140</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">—</td></tr>
+          <tr><td style="border:1px solid #ddd;padding:3px 6px;">小魚乾</td><td style="border:1px solid #ddd;padding:3px 6px;">10 g (1湯匙)</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~220</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">—</td></tr>
+          <tr style="background:#fafafa;"><td style="border:1px solid #ddd;padding:3px 6px;">黑芝麻</td><td style="border:1px solid #ddd;padding:3px 6px;">10 g (1湯匙)</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~116</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">—</td></tr>
+          <tr><td style="border:1px solid #ddd;padding:3px 6px;">莧菜（熟）</td><td style="border:1px solid #ddd;padding:3px 6px;">100 g</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~218</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">—</td></tr>
+          <tr style="background:#fafafa;"><td style="border:1px solid #ddd;padding:3px 6px;">鮭魚（熟）</td><td style="border:1px solid #ddd;padding:3px 6px;">100 g</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~12</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~600–800</td></tr>
+          <tr><td style="border:1px solid #ddd;padding:3px 6px;">鮪魚（水煮罐頭）</td><td style="border:1px solid #ddd;padding:3px 6px;">100 g</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~10</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~200–400</td></tr>
+          <tr style="background:#fafafa;"><td style="border:1px solid #ddd;padding:3px 6px;">蛋黃</td><td style="border:1px solid #ddd;padding:3px 6px;">1顆 (~17 g)</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~22</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~37</td></tr>
+          <tr><td style="border:1px solid #ddd;padding:3px 6px;">日曬乾香菇</td><td style="border:1px solid #ddd;padding:3px 6px;">50 g</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~4</td><td style="border:1px solid #ddd;padding:3px 6px;text-align:right;">~100–400</td></tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="edu-section">
