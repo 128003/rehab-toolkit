@@ -41,6 +41,10 @@
       <div class="item-name">運動處方推薦系統</div>
       <div class="item-sub">ACSM FITT-VP 個人化建議</div>
     </a>
+    <a class="tool-card" href="https://julian461420012001.github.io/ACSM-12th/" target="_blank" style="margin-top:8px;">
+      <div class="item-name">ACSM 運動處方速查</div>
+      <div class="item-sub">第12版指引・各族群運動建議速查</div>
+    </a>
   </div>
 </div>
 
@@ -76,6 +80,7 @@ const TOOLS = [
   {href:"spadi-shoulder.html", icon:"🤕", name:"SPADI 肩痛與失能", desc:"5+8題計分換算", regions:["肩"]},
   {href:"visa-a-achilles.html", icon:"🦵", name:"VISA-A 阿基里斯肌腱病", desc:"8題總分0–100", regions:["踝・足"]},
   {href:"osteoporosis-risk.html", icon:"🦴", name:"骨質疏鬆症風險分層與藥物決策", desc:"OSTAi/MOSTAi・FRAX・健保給付比對", regions:["全身・代謝","脊椎","髖"]},
+  {href:"https://julian461420012001.github.io/spinopelvic-angle/", icon:"📏", name:"脊椎骨盆量測工具", desc:"脊椎骨盆參數角度計算・外部連結", regions:["脊椎","髖"], external:true},
 ];
 const REGIONS = ["全部","肩","肘・腕","脊椎","髖","膝","踝・足","頭部","全身・代謝"];
 let currentRegion = "全部";
@@ -92,9 +97,9 @@ function renderGrid(){
   const grid = document.getElementById('toolGrid');
   if(list.length===0){ grid.innerHTML='<div class="sub">此部位暫無工具</div>'; return; }
   grid.innerHTML = list.map(t=>`
-    <a class="tool-card card" style="margin:0;" href="${t.href}">
+    <a class="tool-card card" style="margin:0;" href="${t.href}"${t.external?' target="_blank"':''}>
       <div style="font-size:22px;">${t.icon}</div>
-      <div class="item-name">${t.name}</div>
+      <div class="item-name">${t.name}${t.external?'<span class="tag yellow" style="margin-left:6px;vertical-align:middle;">外部</span>':''}</div>
       <div class="item-sub">${t.desc}</div>
     </a>`).join('');
 }
