@@ -11,7 +11,7 @@
 body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;}
 .wrap{max-width:920px;margin:0 auto;padding:24px 16px 60px;}
 .back{font-size:13px;color:var(--accent);text-decoration:none;display:inline-block;margin-bottom:10px;font-weight:600;}
-.hero{background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);border-radius:20px;padding:30px 26px;color:#fff;margin-bottom:22px;box-shadow:0 8px 24px rgba(133,33,12,0.18);}
+.hero{background:#d4533a;border-radius:20px;padding:30px 26px;color:#fff;margin-bottom:22px;box-shadow:0 8px 24px rgba(133,33,12,0.18);}
 .hero h1{font-size:25px;margin:0 0 6px;}
 .hero .sub{color:rgba(255,255,255,0.88);margin:0;}
 h1{font-size:21px;margin:0 0 4px;}
