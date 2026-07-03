@@ -187,6 +187,24 @@
   </div>
   <div id="dxaAutoList"></div>
   <div style="margin-top:8px;font-size:11px;color:var(--sub);">⚠️ 標示「需人工確認」者因資料超出本工具輸入範圍，請依臨床判斷自行核對。健保給付DXA每隔兩年一次，最多3次（成骨不全症每年一次）。</div>
+  <div style="margin-top:10px;background:#fff9e6;border:1px solid #f0d999;border-radius:10px;padding:10px 14px;">
+    <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">💰 院內 BMD 骨密度自費檢查收費</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;">
+      <div style="background:#fff;border-radius:8px;padding:6px 14px;border:1px solid #e8d88a;text-align:center;">
+        <div style="font-size:11px;color:var(--sub);">1 個部位</div>
+        <div style="font-weight:800;font-size:15px;color:#c0392b;">300 元</div>
+      </div>
+      <div style="background:#fff;border-radius:8px;padding:6px 14px;border:1px solid #e8d88a;text-align:center;">
+        <div style="font-size:11px;color:var(--sub);">2 個部位</div>
+        <div style="font-weight:800;font-size:15px;color:#c0392b;">600 元</div>
+      </div>
+      <div style="background:#fff;border-radius:8px;padding:6px 14px;border:1px solid #e8d88a;text-align:center;">
+        <div style="font-size:11px;color:var(--sub);">3 個部位</div>
+        <div style="font-weight:800;font-size:15px;color:#c0392b;">900 元</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--sub);margin-top:6px;">收費以本院公告為準。若符合健保給付適應症（見上方✅項目），優先申請健保給付。</div>
+  </div>
 </div>
 
 <div class="card no-print">
@@ -243,9 +261,10 @@ const STORE_KEY = "osteo_risk_v1";
 /* ── 藥物資料（依指引表四 p.42） ── */
 const DRUG_INFO = {
   alendronate:{
-    name:'Alendronate（福善美 / Alendronate Sandoz 70mg）',cls:'雙磷酸鹽類',
+    name:'Alendronate（杏飴挺錠 PlusDmax / 福善美）',cls:'雙磷酸鹽類',
     freq:'每週口服一次（70 mg）',
     spine:'++',hip:'++',male:'++',giop:'++',
+    selfpay:'130元／顆（每週1顆，月費約520元）',
     side:'食道刺激/食道炎（服藥後需保持直立）、急性期反應（首次使用）、非典型股骨骨折（長期）、顎骨壞死（罕見）',
     contra:'eGFR＜35 mL/min；食道蠕動異常或吞嚥困難；無法維持直立 ≥30 分鐘；未矯正低血鈣',
     ptnote:'清晨空腹以整杯（≥200 mL）白開水送服，服後 30 分鐘不可臥躺或進食。不得碾碎或咬碎。'
@@ -254,14 +273,16 @@ const DRUG_INFO = {
     name:'Risedronate（骼維康）',cls:'雙磷酸鹽類',
     freq:'每週（35 mg）或每月（150 mg）口服',
     spine:'++',hip:'++',male:'++',giop:'++',
+    selfpay:'請洽藥局',
     side:'食道刺激（較 alendronate 輕）、非典型股骨骨折（長期）、顎骨壞死（罕見）',
     contra:'eGFR＜30 mL/min；食道蠕動異常；未矯正低血鈣',
     ptnote:'空腹服藥，服後 30 分鐘保持直立。'
   },
   zoledronate:{
-    name:'Zoledronate（克骨力）',cls:'雙磷酸鹽類（靜脈注射）',
+    name:'Zoledronate（骨力強 Aclasta）',cls:'雙磷酸鹽類（靜脈注射）',
     freq:'每年靜脈注射一次（5 mg，緩慢輸注 ≥15 分鐘）',
     spine:'++',hip:'++',male:'++',giop:'++',
+    selfpay:'11,700元／次（每年一次）',
     side:'注射後 3 天類流感症狀（可預服退燒止痛藥）；非典型股骨骨折；顎骨壞死（罕見）；需確保注射前後水份充足',
     contra:'eGFR＜35 mL/min；未矯正低血鈣；注射前須確認腎功能',
     ptnote:'注射日多喝水，可預防性服用普拿疼。需每年回診，不可自行中斷。'
@@ -270,38 +291,43 @@ const DRUG_INFO = {
     name:'Ibandronate（骨維壯）',cls:'雙磷酸鹽類（靜脈注射）',
     freq:'每 3 個月靜脈注射一次（3 mg）',
     spine:'++',hip:'＋（非脊椎骨折部分證據）',male:'＋（部分證據）',giop:'N/A',
+    selfpay:'請洽藥局',
     side:'注射部位不適、類流感症狀；顎骨壞死（罕見）',
     contra:'eGFR＜30 mL/min；未矯正低血鈣',
     ptnote:'每 3 個月回診注射，定期監測腎功能。'
   },
   denosumab:{
-    name:'Denosumab（Prolia® 保骼麗）',cls:'RANKL 單株抗體',
+    name:'Denosumab（保骼麗 Prolia®）',cls:'RANKL 單株抗體',
     freq:'每半年皮下注射一次（60 mg）',
     spine:'++',hip:'++',male:'++',giop:'＋',
+    selfpay:'5,600元／次（每半年一次）',
     side:'低血鈣（腎功能不全者尤需監測）；停藥後骨密度快速下降、可能反彈性多發骨折；感染風險略增；顎骨壞死、非典型骨折（罕見）',
     contra:'未矯正低血鈣（絕對禁忌）；停藥必須銜接雙磷酸鹽類以防反彈骨折',
     ptnote:'每半年定時回診注射，絕對不可自行停藥。停藥前請與醫師討論接續治療計畫。需定期監測血鈣。'
   },
   teriparatide:{
-    name:'Teriparatide（Forteo® 骨穩）',cls:'副甲狀腺素類似物（促骨生成劑）',
+    name:'Teriparatide（骨穩 Forteo®）',cls:'副甲狀腺素類似物（促骨生成劑）',
     freq:'每天皮下自行注射一次（20 μg），最長 2 年',
     spine:'++',hip:'++',male:'++',giop:'N/A（健保無給付）',
+    selfpay:'14,020元／月（骨穩 Forteo）；8,000元／月（艾歐骨得 Alvosteo，biosimilar）',
     side:'頭暈、腿部肌肉痙攣、注射部位疼痛、短暫高鈣血症；累計療程上限 24 個月',
     contra:'骨骼惡性腫瘤或骨轉移；高血鈣；Paget\'s disease；骨骼曾接受放射治療；原發性副甲狀腺機能亢進；不可與 romosozumab 併用',
     ptnote:'需冷藏保存（2–8°C）。療程結束後須立即接續抗骨質再吸收劑，否則骨密度將快速下降。'
   },
   romosozumab:{
-    name:'Romosozumab（Evenity® 骨力強）',cls:'Sclerostin 單株抗體（混合型）',
+    name:'Romosozumab（益穩挺 Evenity®）',cls:'Sclerostin 單株抗體（混合型）',
     freq:'每月皮下注射 2 劑（共 210 mg），療程至多 12 個月',
     spine:'++',hip:'++（非脊椎骨折 ++）',male:'＋（部分證據）',giop:'＋',
+    selfpay:'10,000元／2支（每月一次，共12個月）',
     side:'心肌梗塞/腦中風風險增加（高心血管風險者禁用）；注射部位反應；顎骨壞死、非典型股骨骨折（罕見）；療程後骨密度需銜接抗骨質再吸收劑',
     contra:'過去一年內心肌梗塞或腦中風病史（仿單絕對禁忌）；未矯正低血鈣；健保限停經後女性；不可與 teriparatide 併用',
     ptnote:'療程 12 個月後須立即接續抗骨質再吸收劑。有心臟病或曾中風者使用前需與醫師詳細討論風險。'
   },
   raloxifene:{
-    name:'Raloxifene（SERM 鈣穩）',cls:'選擇性雌激素調節劑（SERM）',
+    name:'Raloxifene（鈣穩 EVISTA®）',cls:'選擇性雌激素調節劑（SERM）',
     freq:'每天口服一次（60 mg）',
     spine:'++',hip:'＋（非脊椎骨折部分證據）',male:'不宜',giop:'N/A',
+    selfpay:'35元／顆（每日1顆，月費約1,050元）',
     side:'熱潮紅、腿部抽筋；深部靜脈栓塞/肺栓塞風險增加；可降低乳癌風險',
     contra:'DVT/肺栓塞病史或高風險；長期臥床；男性不宜；停經前婦女不建議',
     ptnote:'如出現腳部腫脹、胸痛、呼吸困難等血栓症狀，立即就醫。長途搭機或臥床時需注意。'
@@ -606,6 +632,7 @@ function drugPopup(key){
     <dl>
       <dt>藥物類別</dt><dd>${d.cls}</dd>
       <dt>用藥頻率</dt><dd>${d.freq}</dd>
+      ${d.selfpay?`<dt>💰 自費價</dt><dd style="color:#c0392b;font-weight:700;">${d.selfpay}</dd>`:''}
       <dt>副作用</dt><dd>${d.side}</dd>
       <dt>禁忌症</dt><dd><span style="color:var(--bad);">${d.contra}</span></dd>
     </dl>
