@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>下背痛診斷決策流程 | 復健科臨床工具</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* Stepper */
+  .stepper{display:flex;gap:0;margin-bottom:22px;counter-reset:step;}
+  .step-item{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;}
+  .step-item:not(:last-child)::after{content:'';position:absolute;top:16px;left:50%;width:100%;height:2px;background:var(--line);z-index:0;}
+  .step-item.done::after{background:var(--accent);}
+  .step-dot{width:32px;height:32px;border-radius:50%;border:2px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--sub);z-index:1;position:relative;}
+  .step-item.active .step-dot{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .step-item.done .step-dot{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .step-label{font-size:10.5px;color:var(--sub);margin-top:4px;text-align:center;line-height:1.3;}
+  .step-item.active .step-label{color:var(--accent);font-weight:700;}
+  /* Step panels */
+  .step-panel{display:none;}
+  .step-panel.active{display:block;}
+  /* Red flag alert */
+  .redflag-alert{background:#fde8e8;border:2px solid var(--bad);border-radius:14px;padding:16px;margin-bottom:14px;}
+  .redflag-alert .alert-title{font-size:15px;font-weight:800;color:var(--bad);margin-bottom:6px;}
+  /* Question groups */
+  .q-group{margin-bottom:16px;}
+  .q-label{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+  .q-sub{font-size:11.5px;color:var(--sub);margin-bottom:6px;}
+  .radio-group{display:flex;flex-wrap:wrap;gap:6px;}
+  .radio-btn{border:1px solid var(--line);background:#fff;border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s;color:var(--ink);}
+  .radio-btn:hover{border-color:var(--accent);}
+  .radio-btn.sel{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .check-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+  @media(max-width:600px){.check-grid{grid-template-columns:1fr;}}
+  .chk-pill{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer;font-size:12.5px;transition:.15s;line-height:1.4;}
+  .chk-pill input{accent-color:var(--accent);flex-shrink:0;margin-top:2px;}
+  .chk-pill:hover{border-color:var(--accent);background:var(--accent-light);}
+  .chk-pill:has(input:checked){border-color:var(--accent);background:var(--accent-light);}
+  /* Nav buttons */
+  .step-nav{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:10px;}
+  /* Results */
+  .result-section{margin-bottom:18px;}
+  .result-section-title{font-size:14px;font-weight:800;color:var(--accent);border-bottom:2px solid var(--accent-light);padding-bottom:4px;margin-bottom:10px;}
+  .mgmt-card{border-radius:12px;padding:14px;margin-bottom:8px;font-size:13px;line-height:1.7;}
+  .mgmt-red{background:#fde8e8;border:1px solid var(--bad);}
+  .mgmt-orange{background:#fff1e6;border:1px solid #e67e22;}
+  .mgmt-yellow{background:#fff9e6;border:1px solid var(--warn);}
+  .mgmt-green{background:#e8f7ec;border:1px solid var(--good);}
+  .mgmt-icon{font-size:18px;margin-right:6px;}
+  .diff-card{border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px;}
+  .diff-rank{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .diff-rank.rank-low{background:var(--line);color:var(--sub);}
+  .diff-name{font-weight:800;font-size:13px;}
+  .diff-reason{font-size:11.5px;color:var(--sub);margin-top:3px;line-height:1.5;}
+  .diff-triggers{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+  .trigger-chip{font-size:10.5px;padding:2px 8px;background:var(--accent-light);color:var(--accent);border-radius:7px;font-weight:600;}
+  /* Print */
+  @media print{
+    .no-print{display:none!important;}
+    .stepper{display:none;}
+    .step-panel{display:block!important;}
+    .step-nav{display:none;}
+  }
+  .neuro-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media(max-width:500px){.neuro-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body><div class="wrap">
+<a class="back no-print" href="index.html">← 回工具箱首頁</a>
+<h1>🔻 下背痛診斷決策流程</h1>
+<div class="sub">問診引導 → 理學檢查 → 鑑別診斷排序 → 處置建議</div>
+<div class="disclaimer">⚠️ 本工具內容整理自 NEJM 臨床文獻與 ACP/APS 下背痛指引，僅供教育與臨床輔助參考，不取代專業醫療判斷。最終診斷與處置請由醫師評估決定。</div>
+
+<!-- Stepper -->
+<div class="stepper no-print" id="stepper">
+  <div class="step-item active" id="si_1"><div class="step-dot">1</div><div class="step-label">紅旗<br>篩檢</div></div>
+  <div class="step-item" id="si_2"><div class="step-dot">2</div><div class="step-label">病史<br>問診</div></div>
+  <div class="step-item" id="si_3"><div class="step-dot">3</div><div class="step-label">理學<br>檢查</div></div>
+  <div class="step-item" id="si_4"><div class="step-dot">4</div><div class="step-label">結果<br>分析</div></div>
+</div>
+
+<!-- ─── STEP 1: Red Flags ─── -->
+<div class="step-panel active card" id="step1">
+  <div class="section-title">Step 1 ／ 4 — 紅旗警訊篩檢（Red Flag Screening）</div>
+  <div class="q-sub" style="margin-bottom:12px;">請勾選病人是否有以下任一項情況：</div>
+  <div id="redFlagAlert" style="display:none;" class="redflag-alert">
+    <div class="alert-title">🚨 紅旗警訊陽性</div>
+    <div id="redFlagAlertText"></div>
+    <div style="margin-top:8px;font-size:12.5px;">
+      建議立即安排 <b>MRI</b> 或轉診 <b>急診／脊椎外科</b>。<br>
+      懷疑：馬尾症候群 / 硬脊膜外膿瘍 / 脊椎腫瘤 / 脊椎骨折
+    </div>
+    <div style="margin-top:8px;">
+      <label class="chk-pill" style="display:inline-flex;width:auto;background:rgba(255,255,255,0.6);">
+        <input type="checkbox" id="continueAnyway"> 仍繼續完整問診（以取得完整評估資料）
+      </label>
+    </div>
+  </div>
+
+  <div class="check-grid" id="redFlagList"></div>
+
+  <div class="step-nav">
+    <span></span>
+    <button class="action btn-primary" onclick="goStep(2)">下一步：病史問診 →</button>
+  </div>
+</div>
+
+<!-- ─── STEP 2: History ─── -->
+<div class="step-panel card" id="step2">
+  <div class="section-title">Step 2 ／ 4 — 病史問診（History Taking）</div>
+
+  <div class="q-group">
+    <div class="q-label">疼痛位置</div>
+    <div class="radio-group" id="q_location">
+      <button class="radio-btn" data-v="back_only">下背為主</button>
+      <button class="radio-btn" data-v="back_unilateral">下背＋單側腿痛</button>
+      <button class="radio-btn" data-v="back_bilateral">下背＋雙側腿痛</button>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">腿痛是否比背痛明顯？</div>
+    <div class="radio-group" id="q_leg_worse">
+      <button class="radio-btn" data-v="yes">是</button>
+      <button class="radio-btn" data-v="no">否</button>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">疼痛是否符合皮節分布（放射至特定下肢區域）？</div>
+    <div class="radio-group" id="q_dermatomal">
+      <button class="radio-btn" data-v="yes">是</button>
+      <button class="radio-btn" data-v="no">否</button>
+      <button class="radio-btn" data-v="uncertain">不確定</button>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">誘發或加重因子（可複選）</div>
+    <div class="check-grid">
+      <label class="chk-pill"><input type="checkbox" id="q_cough"> 咳嗽・打噴嚏・用力（Valsalva）</label>
+      <label class="chk-pill"><input type="checkbox" id="q_standing"> 久站或步行後加重</label>
+      <label class="chk-pill"><input type="checkbox" id="q_sitting"> 久坐加重</label>
+      <label class="chk-pill"><input type="checkbox" id="q_extension"> 腰椎後仰加重</label>
+      <label class="chk-pill"><input type="checkbox" id="q_flexion_better"> 前彎可緩解</label>
+      <label class="chk-pill"><input type="checkbox" id="q_night_pain"> 夜間休息痛加劇</label>
+      <label class="chk-pill"><input type="checkbox" id="q_no_factor"> 無特定誘發因子</label>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">病程</div>
+    <div class="radio-group" id="q_duration">
+      <button class="radio-btn" data-v="acute">急性（＜2週）</button>
+      <button class="radio-btn" data-v="subacute">亞急性（2–6週）</button>
+      <button class="radio-btn" data-v="chronic">慢性（＞6週）</button>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">神經症狀</div>
+    <div class="neuro-grid">
+      <div>
+        <div class="q-sub">感覺異常（麻木、刺痛）</div>
+        <div class="radio-group" id="q_sensory_sx">
+          <button class="radio-btn" data-v="yes">有</button>
+          <button class="radio-btn" data-v="no">無</button>
+        </div>
+      </div>
+      <div>
+        <div class="q-sub">運動無力</div>
+        <div class="radio-group" id="q_motor_sx">
+          <button class="radio-btn" data-v="yes">有</button>
+          <button class="radio-btn" data-v="no">無</button>
+        </div>
+      </div>
+      <div>
+        <div class="q-sub">步態不穩</div>
+        <div class="radio-group" id="q_gait_sx">
+          <button class="radio-btn" data-v="yes">有</button>
+          <button class="radio-btn" data-v="no">無</button>
+        </div>
+      </div>
+      <div>
+        <div class="q-sub">保守治療後症狀仍無改善</div>
+        <div class="radio-group" id="q_conservative_failed">
+          <button class="radio-btn" data-v="yes">是</button>
+          <button class="radio-btn" data-v="no">否／未嘗試</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">相關病史（可複選）</div>
+    <div class="check-grid">
+      <label class="chk-pill"><input type="checkbox" id="h_spine_surgery"> 脊椎手術史</label>
+      <label class="chk-pill"><input type="checkbox" id="h_cancer"> 癌症病史</label>
+      <label class="chk-pill"><input type="checkbox" id="h_osteoporosis"> 骨質疏鬆症</label>
+      <label class="chk-pill"><input type="checkbox" id="h_ra"> 類風濕性關節炎</label>
+      <label class="chk-pill"><input type="checkbox" id="h_dm"> 糖尿病</label>
+      <label class="chk-pill"><input type="checkbox" id="h_herpes"> 帶狀疱疹病史</label>
+      <label class="chk-pill"><input type="checkbox" id="h_elderly"> 年齡 ≥ 65 歲</label>
+    </div>
+  </div>
+
+  <div class="step-nav">
+    <button class="action btn-ghost" onclick="goStep(1)">← 返回</button>
+    <button class="action btn-primary" onclick="goStep(3)">下一步：理學檢查 →</button>
+  </div>
+</div>
+
+<!-- ─── STEP 3: Physical Exam ─── -->
+<div class="step-panel card" id="step3">
+  <div class="section-title">Step 3 ／ 4 — 理學檢查（Physical Exam）</div>
+
+  <div class="q-group">
+    <div class="q-label">直膝抬腿試驗（Straight-Leg Raising, SLR）</div>
+    <div class="radio-group" id="q_slr">
+      <button class="radio-btn" data-v="negative">陰性</button>
+      <button class="radio-btn" data-v="ipsilateral">同側陽性</button>
+      <button class="radio-btn" data-v="crossed">對側陽性（crossed SLR）</button>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">股神經伸展試驗（Femoral Nerve Stretch Test）</div>
+    <div class="radio-group" id="q_femoral">
+      <button class="radio-btn" data-v="negative">陰性</button>
+      <button class="radio-btn" data-v="positive">陽性（L2–L4放射痛）</button>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">深腱反射</div>
+    <div class="neuro-grid">
+      <div>
+        <div class="q-sub">膝反射（L3–L4）</div>
+        <div class="radio-group" id="q_knee_reflex">
+          <button class="radio-btn" data-v="normal">正常</button>
+          <button class="radio-btn" data-v="reduced">低下／消失</button>
+          <button class="radio-btn" data-v="hyperactive">亢進</button>
+        </div>
+      </div>
+      <div>
+        <div class="q-sub">踝反射（S1）</div>
+        <div class="radio-group" id="q_ankle_reflex">
+          <button class="radio-btn" data-v="normal">正常</button>
+          <button class="radio-btn" data-v="reduced">低下／消失</button>
+          <button class="radio-btn" data-v="hyperactive">亢進</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">肌力（依神經根）</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;">
+      <div>
+        <div class="q-sub">L4（踝背屈）</div>
+        <div class="radio-group" id="q_l4">
+          <button class="radio-btn" data-v="normal">正常</button>
+          <button class="radio-btn" data-v="weak">無力</button>
+        </div>
+      </div>
+      <div>
+        <div class="q-sub">L5（姆趾背屈/EHL）</div>
+        <div class="radio-group" id="q_l5">
+          <button class="radio-btn" data-v="normal">正常</button>
+          <button class="radio-btn" data-v="weak">無力</button>
+        </div>
+      </div>
+      <div>
+        <div class="q-sub">S1（足底屈）</div>
+        <div class="radio-group" id="q_s1">
+          <button class="radio-btn" data-v="normal">正常</button>
+          <button class="radio-btn" data-v="weak">無力</button>
+        </div>
+      </div>
+      <div>
+        <div class="q-sub">多節段肌群（L2–L4 or 廣泛）</div>
+        <div class="radio-group" id="q_multi_weak">
+          <button class="radio-btn" data-v="normal">正常</button>
+          <button class="radio-btn" data-v="weak">無力</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">感覺（皮節）</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;">
+      <div>
+        <div class="q-sub">L4（小腿內側）</div>
+        <div class="radio-group" id="q_sens_l4">
+          <button class="radio-btn" data-v="normal">正常</button>
+          <button class="radio-btn" data-v="abnormal">異常</button>
+        </div>
+      </div>
+      <div>
+        <div class="q-sub">L5（足背/第1趾蹼）</div>
+        <div class="radio-group" id="q_sens_l5">
+          <button class="radio-btn" data-v="normal">正常</button>
+          <button class="radio-btn" data-v="abnormal">異常</button>
+        </div>
+      </div>
+      <div>
+        <div class="q-sub">S1（足外側/足底）</div>
+        <div class="radio-group" id="q_sens_s1">
+          <button class="radio-btn" data-v="normal">正常</button>
+          <button class="radio-btn" data-v="abnormal">異常</button>
+        </div>
+      </div>
+      <div>
+        <div class="q-sub">鞍狀區（會陰/肛周）</div>
+        <div class="radio-group" id="q_sens_saddle">
+          <button class="radio-btn" data-v="normal">正常</button>
+          <button class="radio-btn" data-v="abnormal">異常（鞍狀麻木）</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">腰椎後仰（Extension）是否明顯誘發/加重疼痛？</div>
+    <div class="radio-group" id="q_ext_pain">
+      <button class="radio-btn" data-v="yes">是</button>
+      <button class="radio-btn" data-v="no">否</button>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">脊椎叩擊痛（Percussion Tenderness）？</div>
+    <div class="radio-group" id="q_percussion">
+      <button class="radio-btn" data-v="yes">陽性（明顯骨性壓痛）</button>
+      <button class="radio-btn" data-v="no">陰性</button>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">Waddell 徵象陽性（≥3/5 非器質性徵象）？</div>
+    <div class="radio-group" id="q_waddell">
+      <button class="radio-btn" data-v="yes">是</button>
+      <button class="radio-btn" data-v="no">否</button>
+    </div>
+  </div>
+
+  <div class="q-group">
+    <div class="q-label">Trendelenburg 步態或其他步態異常？</div>
+    <div class="radio-group" id="q_gait_abnormal">
+      <button class="radio-btn" data-v="yes">有</button>
+      <button class="radio-btn" data-v="no">無</button>
+    </div>
+  </div>
+
+  <div class="step-nav">
+    <button class="action btn-ghost" onclick="goStep(2)">← 返回</button>
+    <button class="action btn-primary" onclick="calcAndShow()">分析結果 →</button>
+  </div>
+</div>
+
+<!-- ─── STEP 4: Results ─── -->
+<div class="step-panel card" id="step4">
+  <div class="section-title">Step 4 ／ 4 — 結果分析</div>
+  <div id="resultsContent"></div>
+  <div class="step-nav no-print">
+    <button class="action btn-ghost" onclick="goStep(3)">← 返回修改</button>
+    <div style="display:flex;gap:8px;">
+      <button class="action btn-ghost" onclick="window.print()">🖨️ 列印結果</button>
+      <button class="action btn-ghost" onclick="resetAll()">重新開始</button>
+    </div>
+  </div>
+</div>
+
+<footer>僅供醫療教育用途 · 本工具內容整理自 NEJM 臨床文獻與 ACP/APS 下背痛指引，不取代專業醫療判斷 · 復健科 許雅筑醫師</footer>
+</div>
+
+<script>
+/* ─── Data ─── */
+const RED_FLAGS = [
+  {id:'rf_bowel', label:'大小便功能障礙（膀胱／腸道失禁或尿瀦留）', urgent:'馬尾症候群'},
+  {id:'rf_saddle', label:'鞍狀麻木（Saddle Anesthesia）', urgent:'馬尾症候群'},
+  {id:'rf_bilateral', label:'雙側或不對稱下肢無力', urgent:'馬尾症候群／中央型椎間盤突出'},
+  {id:'rf_fever', label:'發燒（體溫 > 38°C）', urgent:'硬脊膜外膿瘍／化膿性脊椎炎'},
+  {id:'rf_weight', label:'不明原因體重減輕', urgent:'脊椎腫瘤／轉移'},
+  {id:'rf_cancer', label:'癌症病史（任何部位）', urgent:'脊椎轉移'},
+  {id:'rf_trauma', label:'近期外傷史（跌倒、車禍、高處墜落）', urgent:'脊椎骨折'},
+  {id:'rf_ivdrug', label:'靜脈藥物濫用史 或 長期使用類固醇', urgent:'硬脊膜外膿瘍／骨質疏鬆性骨折'},
+];
+
+const DIFFERENTIALS = [
+  {
+    id:'herniated', name:'腰椎椎間盤突出', icon:'💿',
+    score:0,
+    conditions:[
+      {key:'leg_worse_yes', label:'腿痛 > 背痛'},
+      {key:'dermatomal_yes', label:'皮節分布放射痛'},
+      {key:'cough_yes', label:'咳嗽/Valsalva加重'},
+      {key:'slr_positive', label:'SLR 陽性'},
+      {key:'neuro_deficit', label:'神經學缺損'},
+      {key:'unilateral_leg', label:'單側腿痛'},
+    ]
+  },
+  {
+    id:'cauda_equina', name:'馬尾症候群', icon:'🚨',
+    score:0,
+    conditions:[
+      {key:'rf_bowel', label:'大小便障礙'},
+      {key:'rf_saddle', label:'鞍狀麻木'},
+      {key:'rf_bilateral', label:'雙側下肢無力'},
+      {key:'saddle_sensory', label:'鞍狀感覺異常'},
+    ]
+  },
+  {
+    id:'facet', name:'小面關節症候群', icon:'🔗',
+    score:0,
+    conditions:[
+      {key:'axial_dominant', label:'軸性下背痛為主'},
+      {key:'extension_worse', label:'後仰誘發加重'},
+      {key:'slr_negative', label:'SLR 陰性'},
+      {key:'no_neuro_deficit', label:'無神經學缺損'},
+      {key:'no_radiation', label:'無放射性腿痛'},
+    ]
+  },
+  {
+    id:'stenosis', name:'腰椎椎管狹窄', icon:'↔️',
+    score:0,
+    conditions:[
+      {key:'bilateral_leg', label:'雙側下肢症狀'},
+      {key:'standing_worse', label:'久站/行走後加重'},
+      {key:'flexion_better', label:'前彎可緩解'},
+      {key:'elderly', label:'年齡 ≥ 65 歲'},
+      {key:'chronic', label:'慢性病程（>6週）'},
+    ]
+  },
+  {
+    id:'spondylo', name:'脊椎滑脫或骨折', icon:'🦴',
+    score:0,
+    conditions:[
+      {key:'rf_trauma', label:'外傷史'},
+      {key:'rf_ivdrug_or_ost', label:'骨質疏鬆或長期類固醇'},
+      {key:'percussion_pos', label:'脊椎叩擊痛陽性'},
+      {key:'h_osteoporosis', label:'骨質疏鬆症病史'},
+    ]
+  },
+  {
+    id:'abscess', name:'硬脊膜外膿瘍', icon:'🦠',
+    score:0,
+    conditions:[
+      {key:'rf_fever', label:'發燒'},
+      {key:'rf_ivdrug', label:'靜脈藥物濫用史'},
+      {key:'h_dm', label:'糖尿病'},
+      {key:'h_spine_surgery', label:'近期脊椎手術/注射史'},
+    ]
+  },
+  {
+    id:'tumor', name:'脊椎腫瘤／轉移', icon:'🎗️',
+    score:0,
+    conditions:[
+      {key:'rf_cancer', label:'癌症病史'},
+      {key:'rf_weight', label:'不明體重減輕'},
+      {key:'night_pain', label:'夜間休息痛'},
+      {key:'chronic', label:'慢性持續疼痛'},
+    ]
+  },
+  {
+    id:'si_piriformis', name:'薦髂關節障礙／梨狀肌症候群', icon:'🦵',
+    score:0,
+    conditions:[
+      {key:'slr_negative', label:'SLR 陰性'},
+      {key:'axial_dominant', label:'以下背/臀部疼痛為主'},
+      {key:'no_dermatomal', label:'非皮節分布'},
+      {key:'pain_not_below_knee', label:'疼痛通常不過膝'},
+    ]
+  },
+  {
+    id:'hip_knee', name:'髖/膝關節退化性關節炎', icon:'🦿',
+    score:0,
+    conditions:[
+      {key:'bilateral_leg', label:'雙側下肢症狀'},
+      {key:'gait_abnormal', label:'步態異常'},
+      {key:'no_dermatomal', label:'疼痛不符合皮節分布'},
+    ]
+  },
+  {
+    id:'nonorganic', name:'非器質性／心理社會因素', icon:'🧠',
+    score:0,
+    conditions:[
+      {key:'waddell_pos', label:'Waddell 徵象陽性'},
+      {key:'no_factor', label:'無特定誘發因子'},
+      {key:'chronic', label:'慢性病程'},
+    ]
+  },
+];
+
+/* ─── Init UI ─── */
+(function buildRedFlags(){
+  const c = document.getElementById('redFlagList');
+  c.innerHTML = RED_FLAGS.map(rf=>`
+    <label class="chk-pill">
+      <input type="checkbox" id="${rf.id}" onchange="checkRedFlags()">
+      ${rf.label}
+    </label>`).join('');
+})();
+
+function radioGroup(groupId){
+  document.querySelectorAll(`#${groupId} .radio-btn`).forEach(btn=>{
+    btn.addEventListener('click', function(){
+      document.querySelectorAll(`#${groupId} .radio-btn`).forEach(b=>b.classList.remove('sel'));
+      this.classList.add('sel');
+    });
+  });
+}
+['q_location','q_leg_worse','q_dermatomal','q_duration','q_sensory_sx','q_motor_sx','q_gait_sx','q_conservative_failed',
+ 'q_slr','q_femoral','q_knee_reflex','q_ankle_reflex','q_l4','q_l5','q_s1','q_multi_weak',
+ 'q_sens_l4','q_sens_l5','q_sens_s1','q_sens_saddle','q_ext_pain','q_percussion','q_waddell','q_gait_abnormal'
+].forEach(radioGroup);
+
+/* ─── Step navigation ─── */
+let currentStep = 1;
+function goStep(n){
+  if(n === 1){
+    // allow going back from step 2 even with red flags
+  } else if(n > 1){
+    const rf = RED_FLAGS.some(f=>document.getElementById(f.id).checked);
+    if(rf && !document.getElementById('continueAnyway').checked && n > 2){
+      goStep(2); return;
+    }
+    if(rf && !document.getElementById('continueAnyway').checked && n === 2){
+      // allow going to step 2 if continueAnyway checked
+    }
+  }
+  document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(`step${n}`).classList.add('active');
+  [1,2,3,4].forEach(i=>{
+    const si = document.getElementById(`si_${i}`);
+    si.classList.remove('active','done');
+    if(i < n) si.classList.add('done');
+    else if(i === n) si.classList.add('active');
+  });
+  currentStep = n;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function checkRedFlags(){
+  const active = RED_FLAGS.filter(f=>document.getElementById(f.id).checked);
+  const alert = document.getElementById('redFlagAlert');
+  if(active.length > 0){
+    alert.style.display='block';
+    document.getElementById('redFlagAlertText').innerHTML =
+      '已偵測到紅旗警訊：<br>'+active.map(f=>`<span style="color:var(--bad);font-weight:700;">• ${f.label}</span>（懷疑：${f.urgent}）`).join('<br>');
+  } else {
+    alert.style.display='none';
+  }
+}
+
+/* ─── Helper: get value from radio group ─── */
+function rg(id){ const s=document.querySelector(`#${id} .radio-btn.sel`); return s?s.dataset.v:null; }
+function ch(id){ const el=document.getElementById(id); return el?el.checked:false; }
+
+/* ─── Compute results ─── */
+function calcAndShow(){
+  // Gather inputs
+  const rf = RF_ACTIVE();
+  const hasRedFlag = rf.length > 0;
+
+  const loc = rg('q_location');
+  const legWorse = rg('q_leg_worse')==='yes';
+  const dermatomal = rg('q_dermatomal')==='yes';
+  const noDermatomal = rg('q_dermatomal')==='no';
+  const dur = rg('q_duration');
+  const chronic = dur==='chronic';
+  const acute = dur==='acute';
+
+  const cough = ch('q_cough');
+  const standing = ch('q_standing');
+  const extension = ch('q_extension');
+  const flexionBetter = ch('q_flexion_better');
+  const nightPain = ch('q_night_pain');
+  const noFactor = ch('q_no_factor');
+
+  const sensorySx = rg('q_sensory_sx')==='yes';
+  const motorSx = rg('q_motor_sx')==='yes';
+  const conservativeFailed = rg('q_conservative_failed')==='yes';
+
+  const slr = rg('q_slr');
+  const slrPos = slr==='ipsilateral'||slr==='crossed';
+  const slrNeg = slr==='negative';
+  const femPos = rg('q_femoral')==='positive';
+  const kneeReflex = rg('q_knee_reflex');
+  const ankleReflex = rg('q_ankle_reflex');
+  const l4weak = rg('q_l4')==='weak';
+  const l5weak = rg('q_l5')==='weak';
+  const s1weak = rg('q_s1')==='weak';
+  const multiWeak = rg('q_multi_weak')==='weak';
+  const neuroDeficit = sensorySx||motorSx||l4weak||l5weak||s1weak||
+    kneeReflex==='reduced'||ankleReflex==='reduced'||sensorySx;
+  const saddle = rg('q_sens_saddle')==='abnormal';
+  const extPain = rg('q_ext_pain')==='yes';
+  const percussion = rg('q_percussion')==='yes';
+  const waddell = rg('q_waddell')==='yes';
+  const gaitAbnormal = rg('q_gait_abnormal')==='yes';
+  const bilateral = loc==='back_bilateral';
+  const unilateral = loc==='back_unilateral';
+  const axial = loc==='back_only';
+
+  const rfIds = rf.map(f=>f.id);
+  const hOst = ch('h_osteoporosis');
+  const hCancer = ch('h_cancer');
+  const hDm = ch('h_dm');
+  const hSurgery = ch('h_spine_surgery');
+  const hElderly = ch('h_elderly');
+  const progressive = multiWeak||(neuroDeficit&&(bilateral||acute));
+
+  // Build key set
+  const KEYS = new Set();
+  if(legWorse) KEYS.add('leg_worse_yes');
+  if(dermatomal) KEYS.add('dermatomal_yes');
+  if(noDermatomal){ KEYS.add('no_dermatomal'); KEYS.add('pain_not_below_knee'); }
+  if(cough) KEYS.add('cough_yes');
+  if(slrPos) KEYS.add('slr_positive');
+  if(slrNeg){ KEYS.add('slr_negative'); }
+  if(neuroDeficit) KEYS.add('neuro_deficit');
+  else { KEYS.add('no_neuro_deficit'); }
+  if(unilateral) KEYS.add('unilateral_leg');
+  if(bilateral) KEYS.add('bilateral_leg');
+  if(axial||!legWorse){ KEYS.add('axial_dominant'); }
+  if(extPain) KEYS.add('extension_worse');
+  if(!legWorse&&slrNeg&&!neuroDeficit) KEYS.add('no_radiation');
+  rfIds.forEach(id=>KEYS.add(id));
+  if(ch('rf_bowel')) KEYS.add('rf_bowel');
+  if(ch('rf_saddle')) KEYS.add('rf_saddle');
+  if(ch('rf_bilateral')) KEYS.add('rf_bilateral');
+  if(saddle) KEYS.add('saddle_sensory');
+  if(standing||flexionBetter) KEYS.add('standing_worse');
+  if(flexionBetter) KEYS.add('flexion_better');
+  if(hElderly||ch('h_elderly')) KEYS.add('elderly');
+  if(chronic) KEYS.add('chronic');
+  if(percussion) KEYS.add('percussion_pos');
+  if(hOst) KEYS.add('h_osteoporosis');
+  if(ch('rf_ivdrug')) KEYS.add('rf_ivdrug');
+  if(hOst||ch('rf_ivdrug')) KEYS.add('rf_ivdrug_or_ost');
+  if(ch('rf_trauma')) KEYS.add('rf_trauma');
+  if(ch('rf_cancer')) KEYS.add('rf_cancer');
+  if(ch('rf_weight')) KEYS.add('rf_weight');
+  if(nightPain) KEYS.add('night_pain');
+  if(hDm) KEYS.add('h_dm');
+  if(hSurgery) KEYS.add('h_spine_surgery');
+  if(waddell) KEYS.add('waddell_pos');
+  if(noFactor) KEYS.add('no_factor');
+  if(gaitAbnormal) KEYS.add('gait_abnormal');
+
+  // Score differentials
+  const scored = DIFFERENTIALS.map(d=>{
+    const hits = d.conditions.filter(c=>KEYS.has(c.key));
+    return {...d, score:hits.length, hitLabels:hits.map(c=>c.label)};
+  }).filter(d=>d.score>0).sort((a,b)=>b.score-a.score);
+
+  // Management recommendation
+  let mgmt = [];
+  if(hasRedFlag){
+    mgmt.push({level:'red', icon:'🚨', title:'立即轉診／緊急影像評估', body:`已偵測紅旗警訊：${rf.map(f=>f.label).join('、')}。<br>建議立即安排 <b>MRI</b> 或轉診 <b>急診／脊椎外科</b>。<br>鑑別：馬尾症候群・硬脊膜外膿瘍・脊椎腫瘤・脊椎骨折`});
+  }
+  if(!hasRedFlag && progressive){
+    mgmt.push({level:'orange', icon:'🟠', title:'盡快安排 MRI', body:'偵測到進行性或多神經根肌力缺損，即使病程較短，建議及早安排 <b>MRI</b> 評估，必要時轉介神經外科或骨科。'});
+  }
+  if(!hasRedFlag && !progressive && (acute||(!chronic&&!conservativeFailed))){
+    mgmt.push({level:'green', icon:'🟢', title:'保守治療（無需常規影像）', body:'症狀未超過 4–6 週，且無紅旗警訊及進行性神經缺損。<br>建議：<b>NSAIDs／乙醯氨酚</b>・<b>鼓勵維持正常活動</b>・<b>運動治療</b>（核心肌群強化、伸展）。<br>若 4–6 週後無改善，再考慮影像評估。'});
+  }
+  if(!hasRedFlag && (chronic||conservativeFailed)){
+    mgmt.push({level:'yellow', icon:'🟡', title:'建議安排 MRI 或 CT', body:'症狀持續 ≥ 4–6 週或保守治療無效。<br>建議安排 <b>MRI（優先）</b> 或 CT，評估是否適合：<br>• 硬脊膜外類固醇注射<br>• 小面關節注射<br>• 手術評估（如椎間盤突出合併進行性神經缺損）'});
+  }
+  if(!hasRedFlag && (hCancer||ch('h_ra')||ch('h_dm'))){
+    mgmt.push({level:'yellow', icon:'🟡', title:'建議先安排 X 光篩查', body:'具有高風險病史（癌症・RA・長期類固醇）。<br>建議先安排 <b>腰椎X光</b> 排除：腫瘤轉移・感染・滑脫・壓迫性骨折。'});
+  }
+  if(mgmt.length===0){
+    mgmt.push({level:'green', icon:'ℹ️', title:'資料不足，以臨床判斷為準', body:'目前填入資料不足以產生確定建議，請依完整臨床評估判斷。'});
+  }
+
+  // Render
+  const mgmtHtml = mgmt.map(m=>`
+    <div class="mgmt-card mgmt-${m.level}">
+      <div style="font-weight:800;font-size:14px;margin-bottom:4px;">${m.icon} ${m.title}</div>
+      <div style="font-size:12.5px;line-height:1.7;">${m.body}</div>
+    </div>`).join('');
+
+  const diffHtml = scored.length===0
+    ? '<div class="item-sub">填入資料不足，無法計算鑑別診斷排序。請完整填寫各步驟。</div>'
+    : scored.map((d,i)=>`
+    <div class="diff-card">
+      <div class="diff-rank ${i>=5?'rank-low':''}">${i+1}</div>
+      <div style="flex:1;">
+        <div class="diff-name">${d.icon} ${d.name}</div>
+        <div class="diff-reason">符合條件（${d.score}項）：</div>
+        <div class="diff-triggers">${d.hitLabels.map(l=>`<span class="trigger-chip">${l}</span>`).join('')}</div>
+      </div>
+    </div>`).join('');
+
+  // Neuro summary
+  const neuroItems = [];
+  if(l4weak||rg('q_sens_l4')==='abnormal'||kneeReflex==='reduced') neuroItems.push('L4（踝背屈無力・小腿內側感覺・膝反射低下）');
+  if(l5weak||rg('q_sens_l5')==='abnormal') neuroItems.push('L5（姆趾背屈EHL無力・足背感覺異常）');
+  if(s1weak||rg('q_sens_s1')==='abnormal'||ankleReflex==='reduced') neuroItems.push('S1（足底屈無力・足外側感覺・踝反射低下）');
+  if(saddle) neuroItems.push('鞍狀區感覺異常（⚠️ 緊急）');
+
+  const neuroHtml = neuroItems.length>0
+    ? `<div class="result-section">
+        <div class="result-section-title">🧠 神經學缺損摘要</div>
+        ${neuroItems.map(n=>`<div class="item-sub">• ${n}</div>`).join('')}
+      </div>`
+    : '';
+
+  document.getElementById('resultsContent').innerHTML=`
+    <div class="result-section">
+      <div class="result-section-title">📋 處置建議</div>
+      ${mgmtHtml}
+    </div>
+    ${neuroHtml}
+    <div class="result-section">
+      <div class="result-section-title">🔍 鑑別診斷排序（依符合條件數由多至少）</div>
+      <div class="item-sub" style="margin-bottom:8px;">以下為規則式評分（非機率模型），符合條件越多排序越前，僅供參考，最終診斷需醫師綜合判斷。</div>
+      ${diffHtml}
+    </div>
+    <div class="src-note">
+      資料來源：Koes BW et al. NEJM 2006；Deyo RA et al. JAMA 2009；Qaseem A et al. Ann Intern Med 2017；ACP Clinical Guidelines for Low Back Pain<br>
+      本工具僅供教育與臨床輔助參考，不取代專業醫療判斷。
+    </div>`;
+
+  goStep(4);
+}
+
+function RF_ACTIVE(){ return RED_FLAGS.filter(f=>ch(f.id)); }
+function resetAll(){
+  document.querySelectorAll('input[type=checkbox]').forEach(el=>el.checked=false);
+  document.querySelectorAll('.radio-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('redFlagAlert').style.display='none';
+  goStep(1);
+}
+</script>
+</body></html>
