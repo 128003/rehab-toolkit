@@ -4,7 +4,7 @@
   --g0:#85210c; --g1:#cc0100; --g2:#a8341a; --g3:#85210c; --g4:#cc0100; --g5:#85210c;
   --bad:#c0392b; --warn:#b9772e; --good:#3f7d52;
   --radius:16px;
-  --block-child:#fbe9e6; --block-img:#fdeeea; --block-sport:#f8ddd6;
+  --block-child:#fbe9e6; --block-img:#fdeeea; --block-sport:#f8ddd6; --block-sfma:#f6e2d9;
   --shadow-tint: rgba(133,33,12,0.18);
 }
 *{box-sizing:border-box;}
@@ -67,3 +67,4 @@ table th{color:var(--sub);font-weight:700;}
 .block-child{background:var(--block-child);}
 .block-img{background:var(--block-img);}
 .block-sport{background:var(--block-sport);}
+.block-sfma{background:var(--block-sfma);}

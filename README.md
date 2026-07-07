@@ -17,6 +17,8 @@
 | SPADI 肩痛與失能 | 5+8 題計分換算 |
 | VISA-A 阿基里斯肌腱病 | 8 題總分 0–100 |
 | 骨質疏鬆症風險分層與藥物決策 | OSTAi/MOSTAi・FRAX・健保給付比對 |
+| 下背痛診斷決策流程 | 紅旗篩檢 → 病史 → 理學檢查 → 鑑別診斷＋處置建議 |
+| SFMA 選擇性功能動作評估（外部連結） | Top Tier 篩檢 → Breakout 決策樹（213節點）→ 總結報告，內建網頁量角器與計時器。獨立部署於 [sfma-app](https://github.com/128003/sfma-app) |
 
 ## 部署（GitHub Pages）
 
